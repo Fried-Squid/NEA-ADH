@@ -180,7 +180,7 @@ class Lattice:
     This class contains the points.
     """
     def __init__(self, size: list[int]) -> None:
-        self.size = size
+        self._size = size
         x_size, y_size = size
 
         self._points = []
@@ -196,20 +196,23 @@ class Lattice:
         """
         return self._points[x_val][y_val]
 
-    def render(self) -> Image:
+    def __len__(self):
+        return self._size
+
+    def render(self, resolution: list[int], extension: str) -> Image:
         """
         Renders the lattice
         """
-        return "AAAAAAAAAAAAAAAAAAAA"
+        return "AAAAAAAAAAAAAAAAAAAA", resolution, extension
 
 
 class Emitter:
     """
     Where the magic happens
     """
-    def __init__(self, x_func: Callable[[int], int], y_func: Callable[[int], int], pos: list[int, int], tail_end: int = 1000) -> None:
+    def __init__(self, x_func: Callable[[int], int], y_func: Callable[[int], int], pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
         self._x_func, self._y_func, self._pos, self._tail_end = x_func, y_func, pos, tail_end
-        self._time = 0
+        self._time = time_offset
 
     def new_point(self) -> tuple[list, int, bool]:
         """
@@ -218,4 +221,38 @@ class Emitter:
         self._pos = (lambda f_x, f_y, x,y: [f_x(x), f_y(y)])(self._x_func, self._y_func, self._pos[0], self._pos[1]) #shut the fuck up linter iifes are cool
         self._time += 1
         return self._pos[:], self._time, (self._time -1 > self._tail_end)
+
+
+class Settings:
+    """
+    Will hold preferences. Just a datastruct.
+    """
+
+
+
+class Attractor:
+    """
+    Class that defines an attractor and therefore the output image
+    """
+    def __init__(self, emitters: list[Emitter], lattice: Lattice, settings: Settings) -> None:
+        self._emitters = emitters
+        self._lattice  = lattice
+        self._settings = settings
+        self._size     = len(self._lattice)
+
+    def timestep(self):
+        """
+        Advance time.
+        """
+        for emitter in self._emitters:
+            colormap = self._settings.colormap
+            (new_x, new_y), time, displayed = emitter.new_point(self)
+            if displayed:
+                self._lattice.query(new_x, new_y).blend_color(colormap.get_value(time))
+
+    def render(self, resolution: list[int], extension: str) -> Image:
+        """
+        Render self.
+        """
+        return self._lattice.render(resolution, extension)
     
