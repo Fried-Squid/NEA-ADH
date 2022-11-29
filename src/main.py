@@ -1,4 +1,6 @@
 from math import floor
+from typing import Callable
+
 
 def _edit(inner):
     """
@@ -28,50 +30,6 @@ class Color:
                        floor(((self.blue/255* self.alpha/255+ other.blue/255* other.alpha/255* (1 - self.alpha/255)) / new_alpha) * 255),
                        floor(new_alpha * 255))
         return result
-
-
-class Point:
-    """
-    Class manages a point position and color.
-    """
-    def __init__(self, color: Color, pos: list):
-        self._color = color
-        self._pos = pos
-        self._edits = 0
-
-    @_edit
-    def set_color(self, col: Color) -> None:
-        """
-        Setter for color value
-        """
-        self._color = col
-
-    @_edit
-    def blend_color(self, col: Color) -> None:
-        """
-        Blends the points color with another color
-        """
-        self._color += col
-
-    @_edit
-    def brighten(self, amount) -> None:
-        """
-        Brightens the color of a point by adding to the alpha value (hacky ik fix later)
-        """
-        self._color = Color(self._color.red, self._color.green,
-                            self._color.blue, min(self._color.alpha+amount, 255))
-
-    def get_color(self) -> Color:
-        """
-        Getter for color value
-        """
-        return self._color
-
-    def get_pos(self) -> list:
-        """
-        Getter for pos value
-        """
-        return self._pos[:]
 
 
 class Gradient:
@@ -157,3 +115,107 @@ class Colormap:
 
     def __len__(self):
         return len(self._gradient)
+
+
+class Point:
+    """
+    Class manages a point position and color.
+    """
+    def __init__(self, color: Color, pos: list):
+        self._color = color
+        self._pos = pos
+        self._edits = 0
+
+    @_edit
+    def set_color(self, col: Color) -> None:
+        """
+        Setter for color value
+        """
+        self._color = col
+
+    @_edit
+    def blend_color(self, col: Color) -> None:
+        """
+        Blends the points color with another color
+        """
+        self._color += col
+
+    @_edit
+    def brighten(self, amount) -> None:
+        """
+        Brightens the color of a point by adding to the alpha value (hacky ik fix later)
+        """
+        self._color = Color(self._color.red, self._color.green,
+                            self._color.blue, min(self._color.alpha+amount, 255))
+
+    def get_color(self) -> Color:
+        """
+        Getter for color value
+        """
+        return self._color
+
+    def get_pos(self) -> list:
+        """
+        Getter for pos value
+        """
+        return self._pos[:]
+
+
+class Image:
+    """
+    Class for an output image
+    """
+    def __init__(self, pixels: list[list[Point]], extension: str) -> None:                       #Extension object?
+        self.pixels, self.extension = pixels, extension
+
+    def write(self, path: str):
+        """
+        Writes the image to a path
+        """
+        return "not implemented", path
+
+
+class Lattice:
+    """
+    This class contains the points.
+    """
+    def __init__(self, size: list[int]) -> None:
+        self.size = size
+        x_size, y_size = size
+
+        self._points = []
+        for row in y_size:
+            row_list = []
+            for column in x_size:
+                row_list.append(Point(Color(0,0,0,0), [column, row]))
+            self._points.append(row_list)
+
+    def query(self, x_val: int, y_val: int):
+        """
+        Returns the point instance at (X,Y)
+        """
+        return self._points[x_val][y_val]
+
+    def render(self) -> Image:
+        """
+        Renders the lattice
+        """
+        return "AAAAAAAAAAAAAAAAAAAA"
+
+
+class Emitter:
+    """
+    Where the magic happens
+    """
+    def __init__(self, x_func: Callable[[int], int], y_func: Callable[[int], int], pos: list[int, int], tail_end: int = 1000) -> None:
+        self._x_func, self._y_func, self._pos, self._tail_end = x_func, y_func, pos, tail_end
+        self._time = 0
+
+    def new_point(self) -> tuple[list, int, bool]:
+        """
+        Generate a new point
+        """
+        self._pos = (lambda f_x, f_y, x,y: [f_x(x), f_y(y)])(self._x_func, self._y_func, self._pos[0], self._pos[1]) #shut the fuck up linter iifes are cool
+        self._time += 1
+        return self._pos[:], self._time, (self._time -1 > self._tail_end)
+    
