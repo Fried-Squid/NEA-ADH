@@ -140,14 +140,6 @@ class Point:
         """
         self._color += col
 
-    @_edit
-    def brighten(self, amount) -> None:
-        """
-        Brightens the color of a point by adding to the alpha value (hacky ik fix later)
-        """
-        self._color = Color(self._color.red, self._color.green,
-                            self._color.blue, min(self._color.alpha+amount, 255))
-
     def get_color(self) -> Color:
         """
         Getter for color value
@@ -179,7 +171,7 @@ class Lattice:
     """
     This class contains the points.
     """
-    def __init__(self, size: list[int]) -> None:
+    def __init__(self, size: list[int], spacing: int=1) -> None:
         self._size = size
         x_size, y_size = size
 
@@ -187,7 +179,7 @@ class Lattice:
         for row in y_size:
             row_list = []
             for column in x_size:
-                row_list.append(Point(Color(0,0,0,255), [column, row]))
+                row_list.append(Point(Color(0,0,0,255), [spacing*column, spacing*row]))
             self._points.append(row_list)
 
     def query(self, x_val: int, y_val: int) -> Point:
