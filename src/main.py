@@ -11,6 +11,13 @@ def _edit(inner: Callable) -> Callable:
         return inner(*args)
     return outer
 
+def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
+    """
+    Finds the chebyshev distance between two points
+    """
+    (x_1, y_1), (x_2, y_2) = vec1, vec2
+    return max(abs(x_1-x_2), abs(y_1-y_2))
+
 
 class RangeError(ValueError):
     """ piss fart """
@@ -173,6 +180,7 @@ class Lattice:
     """
     def __init__(self, size: list[int], spacing: int=1) -> None:
         self._size = size
+        self._spacing = spacing
         x_size, y_size = size
 
         self._points = []
@@ -229,6 +237,7 @@ class Attractor:
     def __init__(self, emitters: list[Emitter], lattice: Lattice, settings: Settings) -> None:
         self._emitters = emitters
         self._lattice  = lattice
+        self._spacing = self._lattice._spacing
         self._settings = settings
         self._size     = len(self._lattice)
 
@@ -240,6 +249,7 @@ class Attractor:
             colormap = self._settings.colormap
             (new_x, new_y), time, displayed = emitter.new_point(self)
             if displayed:
+                adjusted_x, adjusted_y = 1,1 #todo https://mathoverflow.net/questions/61897/how-to-find-nearest-lattice-point-to-given-point-in-rn-is-it-np
                 self._lattice.query(new_x, new_y).blend_color(colormap.get_value(time))
 
     def render(self, resolution: list[int], extension: str) -> Image:
