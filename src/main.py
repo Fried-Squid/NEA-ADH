@@ -2,11 +2,11 @@ from math import floor
 from typing import Callable
 
 
-def _edit(inner):
+def _edit(inner: Callable) -> Callable:
     """
     Decorator for Point that manages the amount of times it has been edited
     """
-    def outer(*args):
+    def outer(*args) -> Callable:
         args[0]._edits+=1
         return inner(*args)
     return outer
@@ -36,7 +36,7 @@ class Gradient:
     """
     Class that manages color gradients
     """
-    def __init__(self, gradient: list):
+    def __init__(self, gradient: list[list[Color, int]]):
         self._color_peaks = sorted(gradient, key=lambda x: x[1])
 
         if len(gradient) <= 1: #1 or 0
@@ -168,7 +168,7 @@ class Image:
     def __init__(self, pixels: list[list[Point]], extension: str) -> None:                       #Extension object?
         self.pixels, self.extension = pixels, extension
 
-    def write(self, path: str):
+    def write(self, path: str) -> bool:
         """
         Writes the image to a path
         """
@@ -187,10 +187,10 @@ class Lattice:
         for row in y_size:
             row_list = []
             for column in x_size:
-                row_list.append(Point(Color(0,0,0,0), [column, row]))
+                row_list.append(Point(Color(0,0,0,255), [column, row]))
             self._points.append(row_list)
 
-    def query(self, x_val: int, y_val: int):
+    def query(self, x_val: int, y_val: int) -> Point:
         """
         Returns the point instance at (X,Y)
         """
@@ -240,7 +240,7 @@ class Attractor:
         self._settings = settings
         self._size     = len(self._lattice)
 
-    def timestep(self):
+    def timestep(self) -> None:
         """
         Advance time.
         """
