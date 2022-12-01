@@ -1,6 +1,7 @@
 from math import floor
 from typing import Callable
-
+from os import listdir
+from os.path import isfile, join
 
 def _edit(inner: Callable) -> Callable:
     """
@@ -95,7 +96,7 @@ class Gradient:
 
 class Colormap:
     """
-    Encapsulates gradient for some reason
+    Encapsulates gradient, and saves and loads
     """
     def __init__(self, gradient: Gradient):
         self._gradient = gradient
@@ -121,7 +122,38 @@ class Colormap:
     def __len__(self):
         return len(self._gradient)
 
-
+    def save(self, path: str):
+        """
+        Saves the colormap object into path.colormap
+        """
+        data = self._gradient._color_peaks #shouldnt access protected memeber, use getter(?)
+        if path[-1] != "/":
+            file = open(path+".colormap", "w", encoding="utf-8")
+        else:
+            files_in_dir = [file for file in listdir(path) if isfile(join(path, file))]                       #list files in dir
+            filtered_files = list(filter(lambda x:"unnamed_colormap" in x, files_in_dir))                     #filter unnamed_colormap-like files
+            file = open(path+f'/unnamed_colormap_{len(filtered_files)}.colormap', encoding="utf-8")           #create a new colormap without overwriting existing ones (hopefully)
+        for color, pos in data:
+            file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
+            file.write("\n")
+   
+    def load(self, path: str) -> bool:
+        """
+        Load a colormap file. Returns True if successful, False otherwise.
+        """
+        file = open(path, "r", encoding="utf-8")
+        new_gradient = []
+        try:
+            for line in file.readlines():
+                line = line.split(" @ ")
+                (red, green, blue, alpha), pos = (tuple(map(int, line[0].split(", "))), int(line[1]))
+                new_gradient.append([Color(red, green, blue, alpha), pos])
+            self.set_gradient(Gradient(new_gradient))
+            return True
+        except Exception: #lots of possible errors
+            return False
+        
+        
 class Point:
     """
     Class manages a point position and color.
