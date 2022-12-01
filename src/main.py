@@ -32,20 +32,19 @@ class Color:
 
     def __add__(self, other):
         new_alpha = self.alpha/255+ other.alpha/255*(1-self.alpha/255)
-        result = Color(floor(((self.red/255* self.alpha/255+ other.red/255* other.alpha/255* (1 - self.alpha/255)) / new_alpha) * 255),
-                       floor(((self.green/255* self.alpha/255+ other.green/255* other.alpha/255* (1 - self.alpha/255)) / new_alpha) * 255),
-                       floor(((self.blue/255* self.alpha/255+ other.blue/255* other.alpha/255* (1 - self.alpha/255)) / new_alpha) * 255),
+        result = Color(min(floor((self.red/255   * self.alpha/255 + other.red/255   * other.alpha/255) * 255), 255),
+                       min(floor((self.green/255 * self.alpha/255 + other.green/255 * other.alpha/255) * 255), 255),
+                       min(floor((self.blue/255  * self.alpha/255 + other.blue/255  * other.alpha/255) * 255), 255),
                        floor(new_alpha * 255))
         return result
-
+    
 
 class Gradient:
     """
-    Class that manages color gradients
+    Class that manages color gradients.
     """
     def __init__(self, gradient: list[list[Color, int]]):
         self._color_peaks = sorted(gradient, key=lambda x: x[1])
-
         if len(gradient) <= 1: #1 or 0
             self._range = len(gradient)
         else:
@@ -61,8 +60,7 @@ class Gradient:
             if position == val:
                 return color
             if position > val:
-                next_color = color
-                prev_color = self._color_peaks[index-1][0]
+                next_color,prev_color = color,self._color_peaks[index-1][0]
                 rel_pos = val-self._color_peaks[index-1][1]
                 range_between = position - self._color_peaks[index-1][1]
                 break
