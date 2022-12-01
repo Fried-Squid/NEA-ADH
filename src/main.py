@@ -113,7 +113,7 @@ class Colormap:
         """
         return self._gradient
 
-    def get_value(self, time) -> Color:
+    def get_value(self, time: int) -> Color:
         """
         Returns the color at a time
         """
@@ -126,7 +126,7 @@ class Colormap:
         """
         Saves the colormap object into path.colormap
         """
-        data = self._gradient._color_peaks #shouldnt access protected memeber, use getter(?)
+        data = self._gradient._color_peaks[:] #protected access is fine as it is a copy
         if path[-1] != "/":
             file = open(path+".colormap", "w", encoding="utf-8")
         else:
@@ -136,7 +136,7 @@ class Colormap:
         for color, pos in data:
             file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
             file.write("\n")
-   
+        file.close()
     def load(self, path: str) -> bool:
         """
         Load a colormap file. Returns True if successful, False otherwise.
@@ -149,8 +149,10 @@ class Colormap:
                 (red, green, blue, alpha), pos = (tuple(map(int, line[0].split(", "))), int(line[1]))
                 new_gradient.append([Color(red, green, blue, alpha), pos])
             self.set_gradient(Gradient(new_gradient))
+            file.close()
             return True
         except Exception: #lots of possible errors
+            file.close()
             return False
         
         
@@ -279,7 +281,7 @@ class Attractor:
             colormap = self._settings.colormap
             (new_x, new_y), time, displayed = emitter.new_point(self)
             if displayed:
-                adjusted_x, adjusted_y = 1,1 #todo https://mathoverflow.net/questions/61897/how-to-find-nearest-lattice-point-to-given-point-in-rn-is-it-np
+                adjusted_x, adjusted_y = 1,1 #todo #3 https://mathoverflow.net/questions/61897/how-to-find-nearest-lattice-point-to-given-point-in-rn-is-it-np
                 self._lattice.query(adjusted_x, adjusted_y).blend_color(colormap.get_value(time))
 
     def render(self, resolution: list[int], extension: str) -> Image:
