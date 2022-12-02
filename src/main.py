@@ -281,7 +281,7 @@ class Attractor:
             colormap = self._settings.colormap
             (new_x, new_y), time, displayed = emitter.new_point(self)
             if displayed:
-                adjusted_x, adjusted_y = 1,1 #todo #3 https://mathoverflow.net/questions/61897/how-to-find-nearest-lattice-point-to-given-point-in-rn-is-it-np
+                adjusted_x, adjusted_y = round(new_x / self._spacing), round(new_y / self._spacing)
                 self._lattice.query(adjusted_x, adjusted_y).blend_color(colormap.get_value(time))
 
     def render(self, resolution: list[int], extension: str) -> Image:
