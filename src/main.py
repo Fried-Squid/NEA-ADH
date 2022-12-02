@@ -154,7 +154,7 @@ class Colormap:
         except Exception: #lots of possible errors
             file.close()
             return False
-        
+
         
 class Point:
     """
@@ -215,6 +215,7 @@ class Camera:
         self._rot   = rotation
         self._scale = scale
         self._ar    = aspect_ratio
+        self.implicit_res = [x*scale for x in aspect_ratio]
 
         self._translate = lambda x,y: (x-self._pos[0], y-self._pos[1])
         self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
@@ -265,8 +266,16 @@ class Lattice:
         """
         Renders the lattice
         """
-        if resolution == self._size:
-            return Image(self._points[:], extension)
+        camera_plane = camera.transform_space(self._points[:])
+        if resolution == camera.implicit_res:
+            return Image(camera_plane, extension)
+        elif resolution[0] > camera.implicit_res[0] and resolution[1] > camera.implicit_res[1]: #ie. upscale the camera plane via sampling
+            pass
+        elif resolution[0] < camera.implicit_res[0] and resolution[1] < camera.implicit_res[1]: #idk what to do here tbh.
+            pass
+        else:
+            print("aspect ratio mismatch, returning implicit res")
+            return Image(camera_plane, extension)
 
 
 class Emitter:
