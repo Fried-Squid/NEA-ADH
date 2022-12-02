@@ -1,5 +1,5 @@
-from math import floor
-from typing import Callable
+from math import floor, cos, sin
+from typing import Callable, Union
 from os import listdir
 from os.path import isfile, join
 
@@ -206,6 +206,36 @@ class Image:
         return "not implemented", path
 
 
+class Camera:
+    """
+    Class that manages camera transforms
+    """
+    def __init__(self, xpos:float, ypos:float , rotation:float, aspect_ratio:tuple[int,int], scale:float):
+        self._pos   = (xpos, ypos)
+        self._rot   = rotation
+        self._scale = scale
+        self._ar    = aspect_ratio
+
+        self._translate = lambda x,y: (x-self._pos[0], y-self._pos[1])
+        self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
+        self._scale     = lambda x,y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
+
+    def transform_point(self, x_val: float, y_val:float) -> Union[tuple(float,float), None]: #relative to the centered camera plane
+        """
+        Transforms a point to be in space relative to a camera plane with centered origin
+        """
+        if self._scale(x_val,y_val):
+            x_val,y_val = self._translate(x_val,y_val)
+            return self._rotate(x_val,y_val)
+        else:
+            return None
+
+    def transform_space(self, points: list[list[float]]) -> Union[list[list[float]], list]:
+        """
+        Transform a set of points
+        """
+        return list(filter(lambda x:x is not None, map(lambda vec: self.transform_point(vec[0], vec[1]), points)))
+
 class Lattice:
     """
     This class contains the points.
@@ -231,11 +261,12 @@ class Lattice:
     def __len__(self):
         return self._size
 
-    def render(self, resolution: list[int], extension: str) -> Image:
+    def render(self, resolution: list[int], extension: str, camera: Camera) -> Image:
         """
         Renders the lattice
         """
-        return "AAAAAAAAAAAAAAAAAAAA", resolution, extension
+        if resolution == self._size:
+            return Image(self._points[:], extension)
 
 
 class Emitter:
@@ -266,12 +297,13 @@ class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], lattice: Lattice, settings: Settings) -> None:
+    def __init__(self, emitters: list[Emitter], lattice: Lattice, camera: Camera,settings: Settings) -> None:
         self._emitters = emitters
         self._lattice  = lattice
-        self._spacing = self._lattice._spacing
+        self._spacing  = self._lattice._spacing
         self._settings = settings
         self._size     = len(self._lattice)
+        self._camera   = camera
 
     def timestep(self) -> None:
         """
@@ -288,5 +320,5 @@ class Attractor:
         """
         Render self.
         """
-        return self._lattice.render(resolution, extension)
+        return self._lattice.render(resolution, extension, self._camera)
     
