@@ -12,6 +12,7 @@ def _edit(inner: Callable) -> Callable:
         return inner(*args)
     return outer
 
+
 def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
     """
     Finds the chebyshev distance between two points
@@ -259,7 +260,6 @@ class Settings:
     """
     Will hold preferences. Just a datastruct.
     """
-
 
 
 class Attractor:
