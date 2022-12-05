@@ -237,46 +237,6 @@ class Camera:
         """
         return list(filter(lambda x:x is not None, map(lambda vec: self.transform_point(vec[0], vec[1]), points)))
 
-class Lattice:
-    """
-    This class contains the points.
-    """
-    def __init__(self, size: list[int], spacing: int=1) -> None:
-        self._size = size
-        self._spacing = spacing
-        x_size, y_size = size
-
-        self._points = []
-        for row in y_size:
-            row_list = []
-            for column in x_size:
-                row_list.append(Point(Color(0,0,0,255), [spacing*column, spacing*row]))
-            self._points.append(row_list)
-
-    def query(self, x_val: int, y_val: int) -> Point:
-        """
-        Returns the point instance at (X,Y)
-        """
-        return self._points[x_val][y_val]
-
-    def __len__(self):
-        return self._size
-
-    def render(self, resolution: list[int], extension: str, camera: Camera) -> Image:
-        """
-        Renders the lattice
-        """
-        camera_plane = camera.transform_space(self._points[:])
-        if resolution == camera.implicit_res:
-            return Image(camera_plane, extension)
-        elif resolution[0] > camera.implicit_res[0] and resolution[1] > camera.implicit_res[1]: #ie. upscale the camera plane via sampling
-            pass
-        elif resolution[0] < camera.implicit_res[0] and resolution[1] < camera.implicit_res[1]: #idk what to do here tbh.
-            pass
-        else:
-            print("aspect ratio mismatch, returning implicit res")
-            return Image(camera_plane, extension)
-
 
 class Emitter:
     """
@@ -306,12 +266,11 @@ class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], lattice: Lattice, camera: Camera,settings: Settings) -> None:
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera,settings: Settings) -> None:
         self._emitters = emitters
-        self._lattice  = lattice
-        self._spacing  = self._lattice._spacing
+        self._points   = points
         self._settings = settings
-        self._size     = len(self._lattice)
+        self._size     = len(self._points)
         self._camera   = camera
 
     def timestep(self) -> None:
@@ -322,12 +281,12 @@ class Attractor:
             colormap = self._settings.colormap
             (new_x, new_y), time, displayed = emitter.new_point(self)
             if displayed:
-                adjusted_x, adjusted_y = round(new_x / self._spacing), round(new_y / self._spacing)
-                self._lattice.query(adjusted_x, adjusted_y).blend_color(colormap.get_value(time))
+                self._points.append(Point(colormap.get_value(time), [new_x, new_y]))
 
     def render(self, resolution: list[int], extension: str) -> Image:
         """
         Render self.
         """
-        return self._lattice.render(resolution, extension, self._camera)
+        _ = resolution, extension
+        return self._camera.transform_space(self._points) #todo: this
     
