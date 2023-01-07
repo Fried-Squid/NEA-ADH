@@ -3,6 +3,16 @@ from typing import Callable, Union
 from os import listdir
 from os.path import isfile, join
 
+print("    [a]    ".split(" "))
+
+def parse_eq(text: str) -> Callable:
+    """
+    Converts an stringed expression to a callable. params just start with %
+    """
+    text = text.split("%") #["blah blah"]
+    
+
+
 def _edit(inner: Callable) -> Callable:
     """
     Decorator for Point that manages the amount of times it has been edited
@@ -289,4 +299,5 @@ class Attractor:
         """
         _ = resolution, extension
         return self._camera.transform_space(self._points) #todo: this
+    
     
