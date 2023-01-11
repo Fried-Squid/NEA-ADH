@@ -1,6 +1,7 @@
+import os
 from math import floor, cos, sin
-from typing import Callable, Union, List
-from os import listdir, makedirs
+from typing import Callable, Union
+from os import listdir, makedirs, getcwd
 from os.path import isfile, join, exists
 import logging
 from sys import exit
@@ -10,15 +11,36 @@ def initialise_logger(debug):
     """
     Initialises the logger
     """
-    initialisation_time = datetime.now().strftime("%m/%d/%Y_%H:%M:%S")
+    initialisation_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+
+    logdir = f"{getcwd()}/core/logs"
+    logs = map(lambda x:x.replace(".log", ""), os.listdir(logdir))
+
+    debug_logs = filter(lambda x:x[0:9]=="DEBUG_LOG", logs)
+    logs = filter(lambda x:x[0:3]=="LOG", logs)
+    debug_logs = list(map(lambda x:x.replace("DEBUG_LOG-",""), debug_logs))
+    logs = list(map(lambda x: x.replace("LOG-", ""), logs))
+
+    debug_logs.sort(key=lambda date: datetime.strptime(date, "%m-%d-%Y_%H-%M-%S"))
+    logs.sort(key=lambda date: datetime.strptime(date, "%m-%d-%Y_%H-%M-%S"))
+
+    while len(logs) >= 3:
+        os.remove(f"{logdir}/LOG-{logs[0]}.log")
+        logs.pop(0)
+
+    while len(debug_logs) >= 3:
+        os.remove(f"{logdir}/DEBUG_LOG-{debug_logs[0]}.log")
+        debug_logs.pop(0)
+
     if debug:
-        logging.basicConfig(filename = f"/core/logs/DEBUG_LOG-{initialisation_time}", level=logging.DEBUG)
+        logging.basicConfig(filename = f"{logdir}/DEBUG_LOG-{initialisation_time}.log", level=logging.DEBUG)
     else:
-        logging.basicConfig(filename=f"/core/logs/LOG-{initialisation_time}", level=logging.WARNING)
+        logging.basicConfig(filename=f"{logdir}/LOG-{initialisation_time}.log", level=logging.WARNING)
+
     logging.info(f'Logging started @ {datetime.now().strftime("%H:%M:%S")}')
 
 
-def structure_check(dir):
+def structure_check(dir: str):
     """
     Runs a check on the given directory to make sure it has an operational structure, and tries to regenerate the correct
     structure.
@@ -69,6 +91,7 @@ def structure_check(dir):
 
         logging.warning("No samples found, possibly deleted by user.")
 
+    logging.info("StructureCheck passed.")
 
 def parse_eq(text: str) -> Callable:
     """
@@ -97,8 +120,8 @@ def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
 
 class RangeError(ValueError):
     """ Honestly not sure why this is required. """
-
-    logging.critical("Internal Error - RangeError")
+    def __init__(self):
+        logging.critical("Internal Error - RangeError")
 
 
 class Color:
