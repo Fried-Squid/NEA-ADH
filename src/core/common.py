@@ -7,6 +7,9 @@ from sys import exit
 from datetime import datetime
 
 def initialise_logger(debug):
+    """
+    Initialises the logger
+    """
     initialisation_time = datetime.now().strftime("%m/%d/%Y_%H:%M:%S")
     if debug:
         logging.basicConfig(filename = f"/core/logs/DEBUG_LOG-{initialisation_time}", level=logging.DEBUG)
@@ -95,6 +98,8 @@ def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
 class RangeError(ValueError):
     """ Honestly not sure why this is required. """
 
+    logging.critical("Internal Error - RangeError")
+
 
 class Color:
     """
@@ -138,6 +143,7 @@ class Gradient:
                 range_between = position - self._color_peaks[index-1][1]
                 break
         if rel_pos is None:
+            logging.ERROR("Gradient object received invalid index.")
             raise RangeError
         red   = floor(prev_color.red   +(next_color.red   - prev_color.red)   * (rel_pos/range_between))
         green = floor(prev_color.green +(next_color.green - prev_color.green) * (rel_pos/range_between))
@@ -198,6 +204,7 @@ class Colormap:
         """
         Saves the colormap object into path.colormap
         """
+        logging.debug(f"Saving colormap to {path}")
         data = self._gradient._color_peaks[:] #protected access is fine as it is a copy
         if path[-1] != "/":
             file = open(path+".colormap", "w", encoding="utf-8")
@@ -209,10 +216,12 @@ class Colormap:
             file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
             file.write("\n")
         file.close()
+
     def load(self, path: str) -> bool:
         """
         Load a colormap file. Returns True if successful, False otherwise.
         """
+        logging.debug(f"Loading colormap from {path}")
         file = open(path, "r", encoding="utf-8")
         new_gradient = []
         try:
@@ -223,7 +232,9 @@ class Colormap:
             self.set_gradient(Gradient(new_gradient))
             file.close()
             return True
-        except Exception: #lots of possible errors
+        except Exception as e:
+            logging.error("Loading failed.")
+            logging.error(f"Internal error - {e}")
             file.close()
             return False
 
@@ -275,6 +286,7 @@ class Image:
         """
         Writes the image to a path
         """
+        logging.critical("Not yet implemented method write of Image.")
         return "not implemented", path
 
 
