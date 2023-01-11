@@ -1,11 +1,46 @@
+import os
 from math import floor, cos, sin
-from typing import Callable, Union, List
-from os import listdir, makedirs
+from typing import Callable, Union
+from os import listdir, makedirs, getcwd
 from os.path import isfile, join, exists
 import logging
 from sys import exit
+from datetime import datetime
 
-def structure_check(dir):
+def initialise_logger(debug):
+    """
+    Initialises the logger
+    """
+    initialisation_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+
+    logdir = f"{getcwd()}/core/logs"
+    logs = map(lambda x:x.replace(".log", ""), os.listdir(logdir))
+
+    debug_logs = filter(lambda x:x[0:9]=="DEBUG_LOG", logs)
+    logs = filter(lambda x:x[0:3]=="LOG", logs)
+    debug_logs = list(map(lambda x:x.replace("DEBUG_LOG-",""), debug_logs))
+    logs = list(map(lambda x: x.replace("LOG-", ""), logs))
+
+    debug_logs.sort(key=lambda date: datetime.strptime(date, "%m-%d-%Y_%H-%M-%S"))
+    logs.sort(key=lambda date: datetime.strptime(date, "%m-%d-%Y_%H-%M-%S"))
+
+    while len(logs) >= 3:
+        os.remove(f"{logdir}/LOG-{logs[0]}.log")
+        logs.pop(0)
+
+    while len(debug_logs) >= 3:
+        os.remove(f"{logdir}/DEBUG_LOG-{debug_logs[0]}.log")
+        debug_logs.pop(0)
+
+    if debug:
+        logging.basicConfig(filename = f"{logdir}/DEBUG_LOG-{initialisation_time}.log", level=logging.DEBUG)
+    else:
+        logging.basicConfig(filename=f"{logdir}/LOG-{initialisation_time}.log", level=logging.WARNING)
+
+    logging.info(f'Logging started @ {datetime.now().strftime("%H:%M:%S")}')
+
+
+def structure_check(dir: str):
     """
     Runs a check on the given directory to make sure it has an operational structure, and tries to regenerate the correct
     structure.
@@ -55,6 +90,9 @@ def structure_check(dir):
         # or the installation hasn't gone well
 
         logging.warning("No samples found, possibly deleted by user.")
+
+    logging.info("StructureCheck passed.")
+
 def parse_eq(text: str) -> Callable:
     """
     Converts a stringed expression to a callable. params just start with %
@@ -82,6 +120,8 @@ def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
 
 class RangeError(ValueError):
     """ Honestly not sure why this is required. """
+    def __init__(self):
+        logging.critical("Internal Error - RangeError")
 
 
 class Color:
@@ -126,6 +166,7 @@ class Gradient:
                 range_between = position - self._color_peaks[index-1][1]
                 break
         if rel_pos is None:
+            logging.ERROR("Gradient object received invalid index.")
             raise RangeError
         red   = floor(prev_color.red   +(next_color.red   - prev_color.red)   * (rel_pos/range_between))
         green = floor(prev_color.green +(next_color.green - prev_color.green) * (rel_pos/range_between))
@@ -186,6 +227,7 @@ class Colormap:
         """
         Saves the colormap object into path.colormap
         """
+        logging.debug(f"Saving colormap to {path}")
         data = self._gradient._color_peaks[:] #protected access is fine as it is a copy
         if path[-1] != "/":
             file = open(path+".colormap", "w", encoding="utf-8")
@@ -197,10 +239,12 @@ class Colormap:
             file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
             file.write("\n")
         file.close()
+
     def load(self, path: str) -> bool:
         """
         Load a colormap file. Returns True if successful, False otherwise.
         """
+        logging.debug(f"Loading colormap from {path}")
         file = open(path, "r", encoding="utf-8")
         new_gradient = []
         try:
@@ -211,7 +255,9 @@ class Colormap:
             self.set_gradient(Gradient(new_gradient))
             file.close()
             return True
-        except Exception: #lots of possible errors
+        except Exception as e:
+            logging.error("Loading failed.")
+            logging.error(f"Internal error - {e}")
             file.close()
             return False
 
@@ -263,6 +309,7 @@ class Image:
         """
         Writes the image to a path
         """
+        logging.critical("Not yet implemented method write of Image.")
         return "not implemented", path
 
 
@@ -281,7 +328,7 @@ class Camera:
         self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
         self._scale     = lambda x,y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
 
-    def transform_point(self, x_val: float, y_val:float) -> Union[tuple(float,float), None]: #relative to the centered camera plane
+    def transform_point(self, x_val: float, y_val:float) -> Union[tuple, None]: #relative to the centered camera plane
         """
         Transforms a point to be in space relative to a camera plane with centered origin
         """
