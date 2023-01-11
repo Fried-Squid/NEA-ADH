@@ -81,6 +81,17 @@ def structure_check(dir: str):
 
             # Program works fine without this user_files directory access, however this could cause issues in saving
             # or loading.
+    if not exists(dir + "/defaults"):
+        logging.warning("No user_files directory found, possibly deleted by user. Regenerating...")
+        try:
+            makedirs(dir + "/cache")
+            f = open(dir + "/cache/.gitignore", "w+")
+            f.write("""*\n!.gitignore""")
+            f.close()
+            logging.info("Regeneration of user_files successful.")
+        except Exception as e:
+            logging.error(f"Regeneration failed:")
+            logging.error(f"Internal error - {e}")
 
     if not exists(dir + "/samples"):
 
@@ -91,7 +102,7 @@ def structure_check(dir: str):
 
         logging.warning("No samples found, possibly deleted by user.")
 
-    logging.info("StructureCheck passed.")
+    logging.info("StructureCheck Complete.")
 
 def parse_eq(text: str) -> Callable:
     """

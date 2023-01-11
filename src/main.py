@@ -2,8 +2,8 @@ import tkinter as tk
 import threading
 import sys
 import logging
-from os import getcwd
 from core.common import *
+
 
 class MainPage(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -16,19 +16,19 @@ class MainPage(tk.Frame):
 
         self.preview_label   = tk.Label(self.parent, text="Preview Window")
 
-        self.save_colormap_button    = tk.Button(self.parent, bg="grey", text="""Save\nColormap""")
-        self.load_colormap_button    = tk.Button(self.parent, bg="grey", text="""Load\nColormap""")
-        self.edit_colormap_button    = tk.Button(self.parent, bg="grey", text="""Edit\nColormap""")
-        self.reset_colormap_button   = tk.Button(self.parent, bg="grey", text="""Reset\nColormap""")
-        self.edit_vwindow_button     = tk.Button(self.parent, bg="grey", text="""Edit\nV-Window""")
-        self.supersampling_button    = tk.Button(self.parent, bg="grey", text="""Supersampling\nsettings""")
-        self.save_project_button     = tk.Button(self.parent, bg="grey", text="""Save\nproject""")
-        self.load_project_button     = tk.Button(self.parent, bg="grey", text="""Load\nproject""")
-        self.settings_button         = tk.Button(self.parent, bg="grey", text="""Settings &\nPreferences""")
-        self.parameter_button        = tk.Button(self.parent, bg="grey", text="""Parameter\nConfig""")
+        self.save_colormap_button    = tk.Button(self.parent, bg="grey", command=self.save_colormap,  text="""Save\nColormap"""         )
+        self.load_colormap_button    = tk.Button(self.parent, bg="grey", command=self.load_colormap,  text="""Load\nColormap"""         )
+        self.edit_colormap_button    = tk.Button(self.parent, bg="grey", command=self.edit_colormap,  text="""Edit\nColormap"""         )
+        self.reset_colormap_button   = tk.Button(self.parent, bg="grey", command=self.reset_colormap, text="""Reset\nColormap"""        )
+        self.edit_vwindow_button     = tk.Button(self.parent, bg="grey", command=self.edit_vwin,      text="""Edit\nV-Window"""         )
+        self.supersampling_button    = tk.Button(self.parent, bg="grey", command=self.supersampling,  text="""Supersampling\nsettings""")
+        self.save_project_button     = tk.Button(self.parent, bg="grey", command=self.save_project,   text="""Save\nproject"""          )
+        self.load_project_button     = tk.Button(self.parent, bg="grey", command=self.load_project,   text="""Load\nproject"""          )
+        self.settings_button         = tk.Button(self.parent, bg="grey", command=self.settings,       text="""Settings &\nPreferences""")
+        self.parameter_button        = tk.Button(self.parent, bg="grey", command=self.parameters,     text="""Parameter\nConfig"""      )
 
-        self.render_button = tk.Button(self.parent,  bg="grey",text="Render Project")
-        self.video_button  = tk.Button(self.parent,  bg="grey",text="Video mode settings")
+        self.render_button = tk.Button(self.parent,  bg="grey", command=self.render, text="Render Project")
+        self.video_button  = tk.Button(self.parent,  bg="grey", command=self.video, text="Video mode settings")
 
         self.preview_canvas.place(x=8, y=15, height=400, width=400)
         self.colormap_canvas.place(x=428, y=15, height=400, width=60 )
@@ -47,9 +47,45 @@ class MainPage(tk.Frame):
         self.parameter_button     .place(x=628, y=352, height=60, width=95)
 
         self.render_button.place(x=428, y=442, width=295, height=50,)
-        self.video_button.place(x=428, y=511 , width=295, height=50,)
+        self.video_button.place(x=428,  y=511, width=295, height=50,)
 
         logging.debug("MainPage initialized")
+
+    def save_colormap(self):
+        pass
+
+    def load_colormap(self):
+        pass
+
+    def edit_colormap(self):
+        pass
+
+    def reset_colormap(self):
+        pass
+
+    def edit_vwin(self):
+        pass
+
+    def supersampling(self):
+        pass
+
+    def save_project(self):
+        pass
+
+    def load_project(self):
+        pass
+
+    def settings(self):
+        pass
+
+    def parameters(self):
+        pass
+
+    def render(self):
+        pass
+
+    def video(self):
+        pass
 
 
 def main():
@@ -61,5 +97,7 @@ def main():
 
     app = MainPage(root)
     root.mainloop()
+
+
 if __name__ == '__main__':
     main()
