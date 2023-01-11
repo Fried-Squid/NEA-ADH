@@ -4,6 +4,16 @@ from os import listdir, makedirs
 from os.path import isfile, join, exists
 import logging
 from sys import exit
+from datetime import datetime
+
+def initialise_logger(debug):
+    initialisation_time = datetime.now().strftime("%m/%d/%Y_%H:%M:%S")
+    if debug:
+        logging.basicConfig(filename = f"/core/logs/DEBUG_LOG-{initialisation_time}", level=logging.DEBUG)
+    else:
+        logging.basicConfig(filename=f"/core/logs/LOG-{initialisation_time}", level=logging.WARNING)
+    logging.info(f'Logging started @ {datetime.now().strftime("%H:%M:%S")}')
+
 
 def structure_check(dir):
     """
@@ -55,6 +65,8 @@ def structure_check(dir):
         # or the installation hasn't gone well
 
         logging.warning("No samples found, possibly deleted by user.")
+
+
 def parse_eq(text: str) -> Callable:
     """
     Converts a stringed expression to a callable. params just start with %
