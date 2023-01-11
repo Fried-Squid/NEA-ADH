@@ -305,7 +305,7 @@ class Camera:
         self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
         self._scale     = lambda x,y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
 
-    def transform_point(self, x_val: float, y_val:float) -> Union[tuple(float,float), None]: #relative to the centered camera plane
+    def transform_point(self, x_val: float, y_val:float) -> Union[tuple, None]: #relative to the centered camera plane
         """
         Transforms a point to be in space relative to a camera plane with centered origin
         """
