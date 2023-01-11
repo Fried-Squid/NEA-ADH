@@ -1,11 +1,12 @@
 import os
 from math import floor, cos, sin
 from typing import Callable, Union
-from os import listdir, makedirs, getcwd
+from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
 import logging
 from sys import exit
 from datetime import datetime
+
 
 def initialise_logger(debug):
     """
@@ -82,13 +83,16 @@ def structure_check(dir: str):
             # Program works fine without this user_files directory access, however this could cause issues in saving
             # or loading.
     if not exists(dir + "/defaults"):
-        logging.warning("No user_files directory found, possibly deleted by user. Regenerating...")
+        logging.warning("No defaults directory found, possibly deleted by user. Regenerating...")
         try:
-            makedirs(dir + "/cache")
-            f = open(dir + "/cache/.gitignore", "w+")
-            f.write("""*\n!.gitignore""")
-            f.close()
-            logging.info("Regeneration of user_files successful.")
+            makedirs(dir + "/defaults")
+            logging.info("Regeneration of directory successful.")
+            logging.critical("Default files are missing - directory was regenerated but no way to curl the files has been implemented.")  # todo: defaults regenerated
+
+            remove(dir+"/defaults")
+            logging.info("Defaults directory removed. Exiting...")
+            exit(126)
+
         except Exception as e:
             logging.error(f"Regeneration failed:")
             logging.error(f"Internal error - {e}")
