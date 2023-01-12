@@ -31,12 +31,12 @@ class MainPage(tk.Frame):
         self.video_button  = tk.Button(self.parent,  bg="grey", command=self.video, text="Video mode settings")
 
         self.preview_canvas.place(x=8, y=15, height=400, width=400)
-        self.colormap_canvas.place(x=428, y=15, height=400, width=60 )
+        self.colormap_canvas.place(x=428, y=15, height=400, width=60)
 
         self.preview_label.place(x=8, y=0)
 
-        self.save_colormap_button .place(x=508, y=15 , height=60, width=95)
-        self.load_colormap_button .place(x=628, y=15 , height=60, width=95)
+        self.save_colormap_button .place(x=508, y=15,  height=60, width=95)
+        self.load_colormap_button .place(x=628, y=15,  height=60, width=95)
         self.edit_colormap_button .place(x=508, y=100, height=60, width=95)
         self.reset_colormap_button.place(x=628, y=100, height=60, width=95)
         self.edit_vwindow_button  .place(x=508, y=188, height=60, width=95)
