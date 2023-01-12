@@ -1,0 +1,22 @@
+out = c.parse_eq("""PARAM""")((1,1),2)
+END TEST CODE
+x=x*t\\x
+y=y*t\\y
+DELIM
+x=sin(x)*t\\x
+y=cos(y)*t\\y
+DELIM
+x=4\\x
+y=cos(y)*t\\y
+DELIM
+x=cos(y)*t\\x
+y=sin(x)*t\\y
+END TEST DATA
+(2, 2)
+DELIM
+(1.682941969615793, 1.0806046117362795)
+DELIM
+(4, 1.0806046117362795)
+DELIM
+(1.0806046117362795, 1.682941969615793)
+DELIM

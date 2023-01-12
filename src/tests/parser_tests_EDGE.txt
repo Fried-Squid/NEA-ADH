@@ -1,0 +1,12 @@
+out = c.parse_eq("""PARAM""")((1,1),2)
+END TEST CODE
+x=asdasd
+y=y*t+1\\y
+DELIM
+x=asin(x*40000)*t\\x
+y=cos(y)*t\\y
+END TEST DATA
+(2, 3)
+DELIM
+(2, 1.0806046117362795)
+DELIM

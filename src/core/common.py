@@ -120,14 +120,14 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
         start_x = text.find("x=")
         end_x = text.find("\\x")
         expression_x = text[start_x:end_x]
-        loc={"x":1,"t":1}
+        loc={"x":1,"y":1,"t":2}
         logging.debug(f"X Expression was found - [{expression_x}]")
         try:
             exec("from math import *;"+expression_x,{},loc) #pylint: disable = exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_x.txt")
-            logging.debug(f"Internal errror - {e}")
+            logging.debug(f"Internal error - {e}")
             error_x = True
     if "x=" not in text or error_x:
         if "x=" not in text:
@@ -139,21 +139,21 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
             logging.info(f"Loading from default was successful. Loaded string is [{expression_x}]")
         except Exception as e:
             logging.error("Unable to load default equation - hardcoded fallback [x=xt] now in place.")
-            logging.error(f"Interal error - {e}")
-            expression_x = "x=xt"
+            logging.error(f"Internal error - {e}")
+            expression_x = "x=x*t"
     
     if "y=" in text:
         start_y = text.find("y=")
         end_y = text.find("\\y")
         expression_y = text[start_y:end_y]
-        loc={"y":1,"t":1}
+        loc={"x":1,"y":1,"t":2}
         logging.debug(f"Y Expression was found - [{expression_y}]")
         try:
             exec("from math import *;"+expression_y,{},loc) #pylint: disable=exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_y.txt")
-            logging.debug(f"Internal errror - {e}")
+            logging.debug(f"Internal error - {e}")
             error_y = True
 
     if "y=" not in text or error_y:
@@ -166,21 +166,21 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
             logging.info(f"Loading from default was successful. Loaded string is [{expression_y}]")
         except Exception as e:
             logging.error("Unable to load default equation - hardcoded fallback [y=yt] now in place.")
-            logging.error(f"Interal error - {e}")
-            expression_y = "y=yt"
+            logging.error(f"Internal error - {e}")
+            expression_y = "y=y*t"
     
-    def x_func(x, t):
-        loc = {"x":x, "t":t}
+    def x_func(x, y, t):
+        loc={"x":x,"y":y,"t":t}
         try:
             exec("from math import *;"+expression_x, {}, loc)#pylint: disable=exec-used
         except Exception as e:
             logging.error(f"X function raised an error - {e} ")
-            logging.critical("Program unsure how to continue. Exting with code 1...")
+            logging.critical("Program unsure how to continue. Exiting with code 1...")
             exit(1)
         return loc["x"]
 
-    def y_func(y, t):
-        loc = {"y":y, "t":t}
+    def y_func(x, y, t):
+        loc={"x":x,"y":y,"t":t}
         try:
             exec("from math import *;"+expression_y, {}, loc)#pylint: disable=exec-used
         except Exception as e:
@@ -189,8 +189,8 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
             exit(1)
         return loc["y"]
 
-    tuple_func = lambda a, t: (x_func(a[0], t), y_func(a[1], t))
-    
+    tuple_func = lambda a, t: (x_func(a[0], a[1], t), y_func(a[0], a[1], t))
+
     return tuple_func
 
 
