@@ -90,7 +90,7 @@ def structure_check(dir: str):
             logging.critical("Default files are missing - directory was regenerated but no way to curl the files has been implemented.")  # todo: defaults regenerated
 
             remove(dir+"/defaults")
-            logging.info("Defaults directory removed. Exiting...")
+            logging.info("Defaults directory removed to avoid confusion. Exiting...")
             exit(126)
 
         except Exception as e:
@@ -108,13 +108,88 @@ def structure_check(dir: str):
 
     logging.info("StructureCheck Complete.")
 
-def parse_eq(text: str) -> Callable:
+def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09:51 12/01/23
     """
     Converts a stringed expression to a callable. params just start with %
     """
-    text = text.split("%") #["blah blah"]
+    error_y, error_x = False, False
+    logging.debug("Parsing new equation...")
+    if "x=" in text:
+        start_x = text.find("x=")
+        end_x = text.find("\\x")
+        expression_x = text[start_x:end_x]
+        loc={"x":1,"t":1}
+        logging.debug(f"X Expression was found - [{expression_x}]")
+        try:
+            exec(expression_x,{},loc)
+            logging.debug("Expression appears to be error-free.")
+        except Exception as e:
+            logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_x.txt")
+            logging.debug(f"Internal errror - {e}")
+            error_x = True
+    if "x=" not in text or error_x:
+        if "x=" not in text:
+            logging.warning("No X equation found - defaulting to defaults/default_eq_x.txt")
+        logging.info("Attempting to load from default file...")
+        try:
+            default = open("defaults/default_eq_x.txt","r")
+            expression_x = default.readlines[0]
+            logging.info(f"Loading from default was successful. Loaded string is [{expression_x}]")
+        except Exception as e:
+            logging.error("Unable to load default equation - hardcoded fallback [x=xt] now in place.")
+            logging.error(f"Interal error - {e}")
+            expression_x = "x=xt"
     
+    if "y=" in text:
+        start_y = text.find("y=")
+        end_y = text.find("\\y")
+        expression_y = text[start_y:end_y]
+        loc={"y":1,"t":1}
+        logging.debug(f"Y Expression was found - [{expression_y}]")
+        try:
+            exec(expression_y,{},loc)
+            logging.debug("Expression appears to be error-free.")
+        except Exception as e:
+            logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_y.txt")
+            logging.debug(f"Internal errror - {e}")
+            error_y = True
 
+    if "y=" not in text or error_y:
+        if "y=" not in text:
+            logging.warning("No Y equation found - defaulting to defaults/default_eq_y.txt")
+        logging.info("Attempting to load from default file...")
+        try:
+            default = open("defaults/default_eq_y.txt","r")
+            expression_y = default.readlines[0]
+            logging.info(f"Loading from default was successful. Loaded string is [{expression_y}]")
+        except Exception as e:
+            logging.error("Unable to load default equation - hardcoded fallback [y=yt] now in place.")
+            logging.error(f"Interal error - {e}")
+            expression_y = "y=yt"
+    
+    def x_func(x, t):
+        loc = {"x":x, "t":t}
+        try:
+            exec(expression_x, {}, loc)
+        except Exception as e:
+            logging.error(f"X function raised an error - {e} ")
+            logging.critical("Program unsure how to continue. Exting with code 1...")
+            exit(1)
+        return loc["x"]
+
+    def y_func(y, t):
+        loc = {"y":y, "t":t}
+        try:
+            exec(expression_y, {}, loc)
+        except Exception as e:
+            logging.error(f"X function raised an error - {e} ")
+            logging.critical("Program unsure how to continue. Exting with code 1...")
+            exit(1)
+        return loc["y"]
+
+    tuple_func = lambda a,t : (x_func(a[0],t),y_func(a[1],t))
+    
+    return tuple_func
 def _edit(inner: Callable) -> Callable:
     """
     Decorator for Point that manages the amount of times it has been edited
@@ -181,7 +256,7 @@ class Gradient:
                 range_between = position - self._color_peaks[index-1][1]
                 break
         if rel_pos is None:
-            logging.ERROR("Gradient object received invalid index.")
+            logging.error("Gradient object received invalid index.")
             raise RangeError
         red   = floor(prev_color.red   +(next_color.red   - prev_color.red)   * (rel_pos/range_between))
         green = floor(prev_color.green +(next_color.green - prev_color.green) * (rel_pos/range_between))
@@ -242,17 +317,34 @@ class Colormap:
         """
         Saves the colormap object into path.colormap
         """
-        logging.debug(f"Saving colormap to {path}")
+        logging.debug(f"Saving colormap to {path}.colormap")
         data = self._gradient._color_peaks[:] #protected access is fine as it is a copy
         if path[-1] != "/":
-            file = open(path+".colormap", "w", encoding="utf-8")
+            try:
+                file = open(path+".colormap", "w+", encoding="utf-8")
+                logging.debug(f"Successfully opened {path}.colormap")
+            except Exception as e:
+                logging.error("Saving colormap failed")
+                logging.error(f"Internal error - {e}")
         else:
-            files_in_dir = [file for file in listdir(path) if isfile(join(path, file))]                       #list files in dir
-            filtered_files = list(filter(lambda x:"unnamed_colormap" in x, files_in_dir))                     #filter unnamed_colormap-like files
-            file = open(path+f'/unnamed_colormap_{len(filtered_files)}.colormap', encoding="utf-8")           #create a new colormap without overwriting existing ones (hopefully)
+            logging.info("Filename was not specified, only directory. Creating a new unnamed colormap file...")
+            try:
+                files_in_dir = [file for file in listdir(path) if isfile(join(path, file))]                   #list files in dir
+                filtered_files = list(filter(lambda x:"unnamed_colormap" in x, files_in_dir))                 #filter unnamed_colormap-like files
+                file = open(path+f'/unnamed_colormap_{len(filtered_files)}.colormap',"w+",encoding="utf-8")       #create a new colormap without overwriting existing ones (hopefully)
+                logging.debug(f"Successfully opened {path}/unnamed_colormap_{len(filtered_files)}.colormap")
+            except Exception as e:
+                logging.error("Saving colormap failed")
+                logging.error(f"Internal error - {e}")
         for color, pos in data:
-            file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
-            file.write("\n")
+            logging.debug("Attempting to write colormap data to file...")
+            try:
+                file.write(f'{color.red}, {color.green}, {color.blue}, {color.alpha} @ {pos}')
+                file.write("\n")
+                logging.debug("Writing to file was a success.")
+            except:
+                logging.error("Writing failed.")
+                logging.error(f"Internal error - {e}")
         file.close()
 
     def load(self, path: str) -> bool:
@@ -260,6 +352,7 @@ class Colormap:
         Load a colormap file. Returns True if successful, False otherwise.
         """
         logging.debug(f"Loading colormap from {path}")
+
         file = open(path, "r", encoding="utf-8")
         new_gradient = []
         try:
@@ -269,6 +362,8 @@ class Colormap:
                 new_gradient.append([Color(red, green, blue, alpha), pos])
             self.set_gradient(Gradient(new_gradient))
             file.close()
+            logging.debug("Loading success.")
+            logging.debug(f"Loaded new Gradient object at {hex(id(self.get_gradient()))} with parent at {hex(id(self))}")
             return True
         except Exception as e:
             logging.error("Loading failed.")
@@ -343,6 +438,8 @@ class Camera:
         self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
         self._scale     = lambda x,y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
 
+        logging.debug(f"New Camera object instantiated at {hex(id(self))}")
+
     def transform_point(self, x_val: float, y_val:float) -> Union[tuple, None]: #relative to the centered camera plane
         """
         Transforms a point to be in space relative to a camera plane with centered origin
@@ -368,6 +465,7 @@ class Emitter:
         self._x_func, self._y_func, self._pos, self._tail_end = x_func, y_func, pos, tail_end
         self._time = time_offset
 
+        logging.debug(f"New Emitter object instantiated at {hex(id(self))}")
     def new_point(self) -> tuple[list, int, bool]:
         """
         Generate a new point
@@ -393,6 +491,8 @@ class Attractor:
         self._settings = settings
         self._size     = len(self._points)
         self._camera   = camera
+
+        logging.debug(f"New Attractor object instantiated at {hex(id(self))}")
 
     def timestep(self) -> None:
         """
