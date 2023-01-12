@@ -7,6 +7,8 @@ import logging
 from sys import exit
 from datetime import datetime
 
+# pylint: disable=logging-fstring-interpolation
+# pylint: disable=invalid-name
 
 def initialise_logger(debug):
     """
@@ -55,12 +57,12 @@ def structure_check(dir: str):
         logging.warning("No cache directory found, possibly deleted by user. Regenerating...")
         try:
             makedirs(dir + "/cache")
-            f = open(dir + "/cache/.gitignore","w+")
-            f.write("""*\n!.gitignore""")
-            f.close()
+            file = open(dir + "/cache/.gitignore","w+", encoding="utf-8")
+            file.write("""*\n!.gitignore""")
+            file.close()
             logging.info("Regeneration of cache files successful.")
         except Exception as e:
-            logging.critical(f"Regeneration of cache directory failed. Program is unable to cache files - exiting.")
+            logging.critical("Regeneration of cache directory failed. Program is unable to cache files - exiting.")
             logging.error(f"Internal error - {e}")
             exit(126)
 
@@ -72,12 +74,12 @@ def structure_check(dir: str):
         logging.warning("No user_files directory found, possibly deleted by user. Regenerating...")
         try:
             makedirs(dir + "/cache")
-            f = open(dir + "/cache/.gitignore","w+")
+            f = open(dir + "/cache/.gitignore","w+",encoding="utf-8")
             f.write("""*\n!.gitignore""")
             f.close()
             logging.info("Regeneration of user_files successful.")
         except Exception as e:
-            logging.error(f"Regeneration failed:")
+            logging.error("Regeneration failed:")
             logging.error(f"Internal error - {e}")
 
             # Program works fine without this user_files directory access, however this could cause issues in saving
@@ -94,7 +96,7 @@ def structure_check(dir: str):
             exit(126)
 
         except Exception as e:
-            logging.error(f"Regeneration failed:")
+            logging.error("Regeneration failed:")
             logging.error(f"Internal error - {e}")
 
     if not exists(dir + "/samples"):
@@ -121,7 +123,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
         loc={"x":1,"t":1}
         logging.debug(f"X Expression was found - [{expression_x}]")
         try:
-            exec(expression_x,{},loc)
+            exec(expression_x,{},loc) #pylint: disable = exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_x.txt")
@@ -132,7 +134,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
             logging.warning("No X equation found - defaulting to defaults/default_eq_x.txt")
         logging.info("Attempting to load from default file...")
         try:
-            default = open("defaults/default_eq_x.txt","r")
+            default = open("defaults/default_eq_x.txt","r",encoding="utf-8")
             expression_x = default.readlines[0]
             logging.info(f"Loading from default was successful. Loaded string is [{expression_x}]")
         except Exception as e:
@@ -147,7 +149,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
         loc={"y":1,"t":1}
         logging.debug(f"Y Expression was found - [{expression_y}]")
         try:
-            exec(expression_y,{},loc)
+            exec(expression_y,{},loc) #pylint: disable=exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_y.txt")
@@ -159,7 +161,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
             logging.warning("No Y equation found - defaulting to defaults/default_eq_y.txt")
         logging.info("Attempting to load from default file...")
         try:
-            default = open("defaults/default_eq_y.txt","r")
+            default = open("defaults/default_eq_y.txt","r",encoding="utf-8")
             expression_y = default.readlines[0]
             logging.info(f"Loading from default was successful. Loaded string is [{expression_y}]")
         except Exception as e:
@@ -170,7 +172,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     def x_func(x, t):
         loc = {"x":x, "t":t}
         try:
-            exec(expression_x, {}, loc)
+            exec(expression_x, {}, loc)#pylint: disable=exec-used
         except Exception as e:
             logging.error(f"X function raised an error - {e} ")
             logging.critical("Program unsure how to continue. Exting with code 1...")
@@ -180,7 +182,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     def y_func(y, t):
         loc = {"y":y, "t":t}
         try:
-            exec(expression_y, {}, loc)
+            exec(expression_y, {}, loc)#pylint: disable=exec-used
         except Exception as e:
             logging.error(f"X function raised an error - {e} ")
             logging.critical("Program unsure how to continue. Exting with code 1...")
