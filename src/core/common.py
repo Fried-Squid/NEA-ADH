@@ -10,7 +10,7 @@ from datetime import datetime
 # pylint: disable=logging-fstring-interpolation
 # pylint: disable=invalid-name
 
-def initialise_logger(debug):
+def initialise_logger(debug: bool):
     """
     Initialises the logger
     """
@@ -192,6 +192,8 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     tuple_func = lambda a,t : (x_func(a[0],t),y_func(a[1],t))
     
     return tuple_func
+
+
 def _edit(inner: Callable) -> Callable:
     """
     Decorator for Point that manages the amount of times it has been edited
