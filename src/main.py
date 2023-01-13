@@ -20,27 +20,19 @@ class MainPage(tk.Frame):
 
         self.equation_box = ScrolledText(self.parent)
 
-        self.save_colormap_button = tk.Button(self.parent, bg="grey", command=self.save_colormap,
-                                              text="""Save\nColormap""")
-        self.load_colormap_button = tk.Button(self.parent, bg="grey", command=self.load_colormap,
-                                              text="""Load\nColormap""")
-        self.edit_colormap_button = tk.Button(self.parent, bg="grey", command=self.edit_colormap,
-                                              text="""Edit\nColormap""")
-        self.reset_colormap_button = tk.Button(self.parent, bg="grey", command=self.reset_colormap,
-                                               text="""Reset\nColormap""")
-        self.edit_vwindow_button = tk.Button(self.parent, bg="grey", command=self.edit_vwin, text="""Edit\nV-Window""")
-        self.supersampling_button = tk.Button(self.parent, bg="grey", command=self.supersampling,
-                                              text="""Supersampling\nsettings""")
-        self.save_project_button = tk.Button(self.parent, bg="grey", command=self.save_project,
-                                             text="""Save\nproject""")
-        self.load_project_button = tk.Button(self.parent, bg="grey", command=self.load_project,
-                                             text="""Load\nproject""")
-        self.settings_button = tk.Button(self.parent, bg="grey", command=self.settings,
-                                         text="""Settings &\nPreferences""")
-        self.parameter_button = tk.Button(self.parent, bg="grey", command=self.parameters, text="""Parameter\nConfig""")
+        self.save_colormap_button  = tk.Button(self.parent, bg="grey", command=self.save_colormap,  text="""Save\nColormap""")
+        self.load_colormap_button  = tk.Button(self.parent, bg="grey", command=self.load_colormap,  text="""Load\nColormap""")
+        self.edit_colormap_button  = tk.Button(self.parent, bg="grey", command=self.edit_colormap,  text="""Edit\nColormap""")
+        self.reset_colormap_button = tk.Button(self.parent, bg="grey", command=self.reset_colormap, text="""Reset\nColormap""")
+        self.edit_vwindow_button   = tk.Button(self.parent, bg="grey", command=self.edit_vwin,      text="""Edit\nV-Window""")
+        self.supersampling_button  = tk.Button(self.parent, bg="grey", command=self.supersampling,  text="""Supersampling\nsettings""")
+        self.save_project_button   = tk.Button(self.parent, bg="grey", command=self.save_project,   text="""Save\nproject""")
+        self.load_project_button   = tk.Button(self.parent, bg="grey", command=self.load_project,   text="""Load\nproject""")
+        self.settings_button       = tk.Button(self.parent, bg="grey", command=self.settings,       text="""Settings &\nPreferences""")
+        self.parameter_button     = tk.Button(self.parent, bg="grey", command=self.parameters,      text="""Parameter\nConfig""")
 
         self.render_button = tk.Button(self.parent, bg="grey", command=self.render, text="Render Project")
-        self.video_button = tk.Button(self.parent, bg="grey", command=self.video, text="Video mode settings")
+        self.video_button  = tk.Button(self.parent, bg="grey", command=self.video,  text="Video mode settings")
 
         self.preview_canvas.place(x=8, y=15, height=400, width=400)
         self.colormap_canvas.place(x=428, y=15, height=400, width=60)
@@ -49,16 +41,17 @@ class MainPage(tk.Frame):
 
         self.equation_box.place(x=8, y=445, height=120, width=400)
 
-        self.save_colormap_button.place(x=508, y=15, height=60, width=95)
-        self.load_colormap_button.place(x=628, y=15, height=60, width=95)
-        self.edit_colormap_button.place(x=508, y=100, height=60, width=95)
-        self.reset_colormap_button.place(x=628, y=100, height=60, width=95)
-        self.edit_vwindow_button.place(x=508, y=188, height=60, width=95)
-        self.supersampling_button.place(x=628, y=188, height=60, width=95)
-        self.save_project_button.place(x=508, y=273, height=60, width=95)
-        self.load_project_button.place(x=628, y=273, height=60, width=95)
-        self.settings_button.place(x=508, y=352, height=60, width=95)
-        self.parameter_button.place(x=628, y=352, height=60, width=95)
+        self.save_colormap_button   .place(x=508, y=15,  height=60, width=95)
+        self.load_colormap_button   .place(x=628, y=15,  height=60, width=95)
+        self.edit_colormap_button   .place(x=508, y=100, height=60, width=95)
+        self.reset_colormap_button  .place(x=628, y=100, height=60, width=95)
+        self.edit_vwindow_button    .place(x=508, y=188, height=60, width=95)
+        self.supersampling_button   .place(x=628, y=188, height=60, width=95)
+        self.save_project_button    .place(x=508, y=273, height=60, width=95)
+        self.load_project_button    .place(x=628, y=273, height=60, width=95)
+
+        self.settings_button    .place(x=508, y=352, height=60, width=95)
+        self.parameter_button   .place(x=628, y=352, height=60, width=95)
 
         self.render_button.place(x=428, y=442, width=295, height=50, )
         self.video_button.place(x=428, y=511, width=295, height=50, )
