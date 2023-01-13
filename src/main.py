@@ -112,7 +112,9 @@ class MainPage(tk.Frame):
 
     def settings(self):
         logging.debug("User pressed button - 'Settings'")
-
+        logging.debug("Trying to open new window...")
+        settings_window = tk.Toplevel(self.parent)
+        settings_app = SettingsWindow(settings_window)
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
         logging.debug("Trying to open new window...")
@@ -210,7 +212,7 @@ class VWinConfigWindow(PopupWindow):
         logging.debug("VWin Settings window initialised.")
 
         logging.warning("Need to load values here not just call sliders_updated()")
-        
+
         logging.debug("Updating entries")
         self.sliders_updated()
 
@@ -229,19 +231,205 @@ class VWinConfigWindow(PopupWindow):
         # Needs to pass out all of this
         self.x_start_slider.get()
         self.y_start_slider.get()
-        self.x_end_slider  .get()
-        self.y_end_slider  .get()
+        self.x_end_slider.get()
+        self.y_end_slider.get()
 
     def search_window(self):
-        pass
+        logging.debug("User pressed button - 'Search Window'")
+        logging.debug("Trying to open new window...")
+        search_window = tk.Toplevel(self.parent)
+        search_app = SearchWindow(search_window)
 
     def reset(self):
         self.x_start_slider.set(0)
         self.y_start_slider.set(0)
-        self.x_end_slider  .set(0)
-        self.y_end_slider  .set(0)
+        self.x_end_slider.set(0)
+        self.y_end_slider.set(0)
         self.sliders_updated()
 
+
+class SearchWindow(PopupWindow):
+    def __init__(self, parent):
+        # idk if im happy with the way scale works atm. maybe do it by mouse clicks?
+        super().__init__(parent)
+        self.parent.geometry('400x350')
+
+        self.search_canvas = tk.Canvas(self.parent, bg="grey")
+
+        self.search_label = tk.Label(self.parent, text="Search Area")
+        self.scale_label = tk.Label(self.parent, text="Scale")
+        self.x_axis_label = tk.Label(self.parent, text="X Axis")
+        self.y_axis_label = tk.Label(self.parent, text="Y Axis")
+        self.x_val_label = tk.Label(self.parent, text="X Val: 0")
+        self.y_val_label = tk.Label(self.parent, text="Y Val: 0")
+
+        self.scale_slider = tk.Scale(self.parent, from_=1, to=10000, orient=tk.VERTICAL, command=self.scale_changed)
+
+        axis_options = ["x", "y", "p1", "p2"]
+        self.x_axis = tk.StringVar()
+        self.x_axis.set("x")
+        self.x_axis_dropdown = tk.OptionMenu(self.parent, self.x_axis, *axis_options)
+
+        axis_options = ["x", "y", "p1", "p2"]
+        self.y_axis = tk.StringVar()
+        self.y_axis.set("y")
+        self.y_axis_dropdown = tk.OptionMenu(self.parent, self.y_axis, *axis_options)
+
+        self.search_canvas.place(x=9, y=15, width=320, height=200)
+
+        self.search_label.place(x=9, y=0, width=100, height=10)
+        self.scale_label.place(x=340, y=0, width=35, height=10)
+        self.x_axis_label.place(x=9, y=228, width=40, height=10)
+        self.y_axis_label.place(x=9, y=269, width=40, height=10)
+        self.x_val_label.place(x=339, y=228, width=60, height=30)
+        self.y_val_label.place(x=339, y=269, width=60, height=30)
+
+        self.scale_slider.place(x=339, y=15, height=200, width=50)
+
+        self.x_axis_dropdown.place(x=59, y=224, width=270, height=25)
+        self.y_axis_dropdown.place(x=59, y=265, width=270, height=25)
+
+        self.exit_button.place(x=9, y=299, height=45, width=375)
+
+    def scale_changed(self, *args):
+        pass
+
+    def mouse_moved_in_canvas(self):
+        self.x_val_label['text'] = 1  # this needs to be changed to use the mouse pointer and scaling
+        self.y_val_label['text'] = 1  # this needs to be changed to use the mouse pointer and scaling
+
+
+def update_needed(f):
+    def wrapper(*args):
+        logging.debug("Update needed for a settings frame...")
+        x= f(*args)
+        self = args[0]
+        logging.debug("Destroying previous widgets in actual settings frame....")
+        for widget in self.actual_settings_frame.winfo_children():
+            widget.destroy()
+
+        logging.debug("Instantiating new settings class into the actual settings frame")
+        self.frame_content(self.actual_settings_frame)
+        return x
+    return wrapper
+
+
+class SettingsWindow(PopupWindow):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent.geometry('750x450')
+
+        self.bar_callbacks = [self.general, self.rendering, self.files, self.color, self.ui, self.maths, self.update_method]
+        self.settings_bar = SettingsBar(parent, self.bar_callbacks)
+        self.exit_button.place(x=25, y=395, width=700, height=45)
+
+        self.actual_settings_frame = tk.Frame(self.parent, bg="grey")
+        self.actual_settings_frame.place(x=122, y=12, width=616, height=370)
+
+        logging.debug("Trying to render default (general) settings frame...")
+        self.frame_content = GeneralSettings
+        self.frame_content(self.actual_settings_frame)
+
+    @update_needed
+    def general(self):
+        logging.debug("User opened general tab of settings")
+        self.frame_content = GeneralSettings
+
+    @update_needed
+    def rendering(self):
+        logging.debug("User opened general tab of settings")
+        self.frame_content = RenderingSettings
+
+    @update_needed
+    def files(self):
+        logging.debug("User opened files tab of settings")
+        self.frame_content = FilesSettings
+
+    @update_needed
+    def color(self):
+        logging.debug("User opened color tab of settings")
+        self.frame_content = ColorSettings
+
+    @update_needed
+    def ui(self):
+        logging.debug("User opened ui tab of settings")
+        self.frame_content = UISettings
+
+    @update_needed
+    def maths(self):
+        logging.debug("User opened maths tab of settings")
+        self.frame_content = MathsSettings
+
+    @staticmethod
+    def update_method():
+        logging.debug("User opened update tab of settings")
+        logging.error("Not Implemented")
+
+
+class GeneralSettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="GENERAL")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class RenderingSettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="RENDER")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class FilesSettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="FILES")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class ColorSettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="COLOR")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class UISettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="UI")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class MathsSettings:
+    def __init__(self, parent):
+        self.parent = parent
+        self.test_label = tk.Label(self.parent, text="MATHS")
+        self.test_label.place(x=0, y=10, width=100, height=10)
+
+
+class SettingsBar:
+    def __init__(self, parent, callbacks):
+        self.parent = parent
+        self.callbacks = callbacks
+
+        self.general_button = tk.Button(self.parent, bg="grey", command=self.callbacks[0], text="Genera")
+        self.rendering_button = tk.Button(self.parent, bg="grey", command=self.callbacks[1], text="Rendering")
+        self.files_button = tk.Button(self.parent, bg="grey", command=self.callbacks[2], text="Files")
+        self.color_button = tk.Button(self.parent, bg="grey", command=self.callbacks[3], text="Color")
+        self.ui_button = tk.Button(self.parent, bg="grey", command=self.callbacks[4], text="UI")
+        self.maths_button = tk.Button(self.parent, bg="grey", command=self.callbacks[5], text="Maths")
+        self.update_button = tk.Button(self.parent, bg="grey", command=self.callbacks[6], text="Update")
+        self.placeholder = tk.Label(self.parent, bg="grey")
+
+        self.general_button.place(x=13, y=12, width=95, height=15)
+        self.rendering_button.place(x=13, y=27, width=95, height=15)
+        self.files_button.place(x=13, y=42, width=95, height=15)
+        self.color_button.place(x=13, y=57, width=95, height=15)
+        self.ui_button.place(x=13, y=73, width=95, height=15)
+        self.maths_button.place(x=13, y=88, width=95, height=15)
+        self.update_button.place(x=13, y=103, width=95, height=15)
+        self.placeholder.place(x=13, y=118, width=95, height=265)
 
 
 def main():
