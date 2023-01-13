@@ -123,7 +123,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"X Expression was found - [{expression_x}]")
         try:
-            exec("from math import *;"+expression_x,{},loc) #pylint: disable = exec-used
+            exec("from math import *;"+expression_x,{},loc)  #pylint: disable = exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_x.txt")
@@ -149,7 +149,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"Y Expression was found - [{expression_y}]")
         try:
-            exec("from math import *;"+expression_y,{},loc) #pylint: disable=exec-used
+            exec("from math import *;"+expression_y,{},loc)  #pylint: disable=exec-used
             logging.debug("Expression appears to be error-free.")
         except Exception as e:
             logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_y.txt")
@@ -172,7 +172,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     def x_func(x, y, t):
         loc={"x":x,"y":y,"t":t}
         try:
-            exec("from math import *;"+expression_x, {}, loc)#pylint: disable=exec-used
+            exec("from math import *;"+expression_x, {}, loc)  #pylint: disable=exec-used
         except Exception as e:
             logging.error(f"X function raised an error - {e} ")
             logging.critical("Program unsure how to continue. Exiting with code 1...")
@@ -182,7 +182,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     def y_func(x, y, t):
         loc={"x":x,"y":y,"t":t}
         try:
-            exec("from math import *;"+expression_y, {}, loc)#pylint: disable=exec-used
+            exec("from math import *;"+expression_y, {}, loc)  #pylint: disable=exec-used
         except Exception as e:
             logging.error(f"X function raised an error - {e} ")
             logging.critical("Program unsure how to continue. Exting with code 1...")
