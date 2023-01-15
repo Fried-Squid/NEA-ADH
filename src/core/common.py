@@ -226,12 +226,16 @@ class Color:
         self.alpha, self.red, self.blue, self.green = alpha, red, blue, green
 
     def __add__(self, other):
-        new_alpha = self.alpha/255+ other.alpha/255*(1-self.alpha/255)
+        new_alpha = self.alpha/255 + other.alpha/255*(1-self.alpha/255)
         result = Color(min(floor((self.red/255   * self.alpha/255 + other.red/255   * other.alpha/255) * 255), 255),
                        min(floor((self.green/255 * self.alpha/255 + other.green/255 * other.alpha/255) * 255), 255),
                        min(floor((self.blue/255  * self.alpha/255 + other.blue/255  * other.alpha/255) * 255), 255),
                        floor(new_alpha * 255))
         return result
+
+    def hex(self):
+        pass
+        #todo: return hex value
     
 
 class Gradient:
@@ -295,7 +299,6 @@ class Colormap:
     """
     def __init__(self, gradient: Gradient):
         self._gradient = gradient
-
     def set_gradient(self, grad: Gradient):
         """
         Setter for gradient

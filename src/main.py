@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog as fd
 import threading
 import sys
 import logging
@@ -12,6 +13,13 @@ class MainPage(tk.Frame):
         self.parent = parent
         self.parent.geometry('750x575')
         self.parent.resizable(False, False)
+        self.x = 1  # temp to make linter be quiet about project save/load being static but not declared as such
+
+        self.colormap = Colormap(None)  # Initialised with None as colormap is loaded straight away
+        loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
+        if not loaded:
+            logging.critical("Default colormap could not be loaded. Exiting...")
+            exit(126)
 
         self.preview_canvas = tk.Canvas(self.parent, bg="grey")
         self.colormap_canvas = tk.Canvas(self.parent, bg="grey")
@@ -78,15 +86,27 @@ class MainPage(tk.Frame):
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
+        filename = fd.asksaveasfilename(filetypes=[("Colormap File", "*.colormap"),("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
+        logging.debug(f"Absolute save path is {filename}")
+        self.colormap.save(filename.rstrip(".colormap"))
 
     def load_colormap(self):
         logging.debug("User pressed button - 'Load Colormap'")
+        filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"),("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
+        logging.debug(f"Absolute filepath opened is {filename}")
+        self.colormap.load(filename)
 
     def edit_colormap(self):
         logging.debug("User pressed button - 'Edit Colormap'")
+        logging.debug("Trying to open new window...")
+        colormap_editor_window = tk.Toplevel(self.parent)
+        colormap_editor_app = ColormapEditor(colormap_editor_window, self.colormap)
 
     def reset_colormap(self):
         logging.debug("User pressed button - 'Reset Colormap'")
+        loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
+        if not loaded:
+            logging.error("Default colormap could not be loaded - reset failed.")
 
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
@@ -96,18 +116,27 @@ class MainPage(tk.Frame):
 
     def supersampling(self):
         logging.debug("User pressed button - 'Supersampling'")
+        logging.debug("Trying to open new window...")
+        supersampling_config_window = tk.Toplevel(self.parent)
+        supersampling_config_app = SupersamplingWindow(supersampling_config_window)
 
     def save_project(self):
         logging.debug("User pressed button - 'Save Project'")
-
+        filename = fd.asksaveasfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
+        logging.debug(f"Absolute save path is {filename}")
+        self.x=1
     def load_project(self):
         logging.debug("User pressed button - 'Load Project'")
+        filename = fd.askopenfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
+        logging.debug(f"Absolute filepath opened is {filename}")
+        self.x = 1
 
     def settings(self):
         logging.debug("User pressed button - 'Settings'")
         logging.debug("Trying to open new window...")
         settings_window = tk.Toplevel(self.parent)
         settings_app = SettingsWindow(settings_window)
+
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
         logging.debug("Trying to open new window...")
@@ -116,11 +145,16 @@ class MainPage(tk.Frame):
 
     def render(self):
         logging.debug("User pressed button - 'Render'")
+        self.x = 1
+        # self.attractor.render(self.settings.resolution, self.settings.extension)
 
+    @staticmethod
     def video(self):
         logging.debug("User pressed button - 'Video mode settings'")
+        logging.error("Not yet implemented")
 
 
+#talk about using this parent class in design
 class PopupWindow:
     def __init__(self, parent, on_close=None):
         self.parent = parent
@@ -132,7 +166,7 @@ class PopupWindow:
 
     def exit_window(self, *args, **kwargs):
         if self.on_close is not None:
-            self.on_close(*args, **kwargs)
+            self.on_close(*args, **kwargs) #talk about arg passing in design
 
         self.parent.destroy()
 
@@ -168,14 +202,10 @@ class VWinConfigWindow(PopupWindow):
         self.x_end_label = tk.Label(self.parent, bg="grey", text="X End")
         self.y_end_label = tk.Label(self.parent, bg="grey", text="Y End")
 
-        self.x_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL,
-                                       command=self.sliders_updated)
-        self.y_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL,
-                                       command=self.sliders_updated)
-        self.x_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL,
-                                     command=self.sliders_updated)
-        self.y_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL,
-                                     command=self.sliders_updated)
+        self.x_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
+        self.y_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
+        self.x_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
+        self.y_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
 
         self.x_start_entry = tk.Entry(self.parent)
         self.y_start_entry = tk.Entry(self.parent)
@@ -293,7 +323,7 @@ class SearchWindow(PopupWindow):
 
 
 def update_needed(f):
-    def wrapper(*args):
+    def wrapper(*args): #talk about writing this algorithm as a wrapper
         logging.debug("Update needed for a settings frame...")
         x= f(*args)
         self = args[0]
@@ -304,7 +334,7 @@ def update_needed(f):
         logging.debug("Instantiating new settings class into the actual settings frame")
         self.frame_content(self.actual_settings_frame)
         return x
-    return wrapper
+    return wrapper # talk about the None error you had from returning this
 
 
 class SettingsWindow(PopupWindow):
@@ -312,14 +342,14 @@ class SettingsWindow(PopupWindow):
         super().__init__(parent)
         self.parent.geometry('750x450')
 
-        self.bar_callbacks = [self.general, self.rendering, self.files, self.color, self.ui, self.maths, self.update_method]
+        self.bar_callbacks = [self.general, self.rendering, self.files, self.color, self.ui, self.maths, self.update_method] #talk about the callbacks in development
         self.settings_bar = SettingsBar(parent, self.bar_callbacks)
         self.exit_button.place(x=25, y=395, width=700, height=45)
 
         self.actual_settings_frame = tk.Frame(self.parent, bg="grey")
         self.actual_settings_frame.place(x=122, y=12, width=616, height=370)
 
-        logging.debug("Trying to render default (general) settings frame...")
+        logging.debug("Trying to render default (general) settings frame...") #talk about these algos in design
         self.frame_content = GeneralSettings
         self.frame_content(self.actual_settings_frame)
 
@@ -423,6 +453,54 @@ class SettingsBar:
         self.maths_button.place(x=13, y=88, width=95, height=15)
         self.update_button.place(x=13, y=103, width=95, height=15)
         self.placeholder.place(x=13, y=118, width=95, height=265)
+
+
+# talk about window design change while coding because it felt off during testing
+class ColormapEditor(PopupWindow):
+    def __init__(self, parent, colormap: Colormap):
+        super().__init__(parent)
+        self.colormap = colormap
+        self.parent = parent
+        self.parent.geometry("650x400")
+
+        self.colormap_canvas = tk.Canvas(self.parent, bg="grey")
+
+        self.position_slider = tk.Scale(self.parent, from_=0, to=100, orient=tk.VERTICAL)
+
+        self.color_button      = tk.Button(self.parent, bg=self.colormap.get_value(int(self.position_slider.get())).hex())  # this required updating common:color
+        self.insert_button     = tk.Button(self.parent, bg="grey")   # i was here before i had to go
+        self.delete_button     = tk.Button(self.parent, bg="grey")
+        self.jump_next_button  = tk.Button(self.parent, bg="grey")
+        self.reverse_button    = tk.Button(self.parent, bg="grey")
+        self.invert_button     = tk.Button(self.parent, bg="grey")
+        self.jump_prev_button  = tk.Button(self.parent, bg="grey")
+        self.adjoin_button     = tk.Button(self.parent, bg="grey")
+        self.double_button     = tk.Button(self.parent, bg="grey")
+        self.jump_first_button = tk.Button(self.parent, bg="grey")
+        self.save_button       = tk.Button(self.parent, bg="grey")
+        self.load_button       = tk.Button(self.parent, bg="grey")
+        self.jump_last_button  = tk.Button(self.parent, bg="grey")
+
+
+        self.position_slider.place(x=81, y=12, width=40, height=380)
+
+        self.colormap_canvas.place(x=12, y=12, width=60, height=380)
+
+        self.exit_button.place(x=179, y=345, width=462, height=45)
+
+    def update_button(self):
+        self.color_button.configure(bg=self.colormap.get_value(int(self.position_slider.get())).hex())
+
+    def update_colormap(self):
+        pass
+        # todo: displaying colormaps onto canvas objects, make a function for it that takes a canvas and colormap as arugments
+
+
+class SupersamplingWindow(PopupWindow):
+    def __init__(self, parent):
+        super().__init__(self, parent)
+        self.parent = parent
+        self.parent.geometry("600x400") #todo: design this window
 
 
 def main():
