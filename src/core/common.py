@@ -235,7 +235,7 @@ class Color:
 
     def hex(self) -> str:
         return f"#{str(hex(self.red)).lstrip('0x')}{str(hex(self.green)).lstrip('0x')}{str(hex(self.blue)).lstrip('0x')}"
-        #todo: return hex value
+
     
 
 class Gradient:
