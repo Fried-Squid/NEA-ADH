@@ -234,9 +234,8 @@ class Color:
         return result
 
     def hex(self) -> str:
-        return f"#{str(hex(self.red)).lstrip('0x')}{str(hex(self.green)).lstrip('0x')}{str(hex(self.blue)).lstrip('0x')}"
+        return f"#{('0x%02X' % self.red)[2:]}{('0x%02X' % self.green)[2:]}{('0x%02X' % self.blue)[2:]}".lower()
 
-    
 
 class Gradient:
     """
@@ -244,7 +243,7 @@ class Gradient:
     """
     def __init__(self, gradient: list[list[Color, int]]):
         self._color_peaks = sorted(gradient, key=lambda x: x[1])
-        if len(gradient) <= 1: #1 or 0
+        if len(gradient) <= 1: # 1 or 0
             self._range = len(gradient)
         else:
             self._range = abs(self._color_peaks[0][1] - self._color_peaks[-1][1])
@@ -299,6 +298,7 @@ class Colormap:
     """
     def __init__(self, gradient: Gradient):
         self._gradient = gradient
+
     def set_gradient(self, grad: Gradient):
         """
         Setter for gradient
@@ -319,6 +319,24 @@ class Colormap:
 
     def __len__(self):
         return len(self._gradient)
+
+    def insert_value(self, color: Color, time: int) -> None:
+        to_insert = [color, time]
+        logging.warning("Protected access of _color_peaks in method insert_value - could maybe cause issues?")
+        x = [a[:] for a in self.get_gradient()._color_peaks[:]]
+        for index, (color, value) in enumerate(x):
+            if time == value:
+                x[index] = to_insert
+                self._gradient.__setattr__("_color_peaks", x)
+                return
+        for index, (color, value) in enumerate(x): # talk about the bs where this would try and insert 100, 0, 100
+            if time < value:
+                x.insert(index, to_insert)
+                self._gradient.__setattr__("_color_peaks", x)
+                return
+
+        x.append(to_insert)
+        self._gradient.__setattr__("_color_peaks", x)
 
     def save(self, path: str):
         """

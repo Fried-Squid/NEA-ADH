@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog as fd
+from tkinter import colorchooser as cc
 import threading
 import sys
 import logging
@@ -467,19 +468,19 @@ class ColormapEditor(PopupWindow):
 
         self.position_slider = tk.Scale(self.parent, from_=0, to=100, orient=tk.VERTICAL, command=self.update_button)
 
-        self.color_button      = tk.Button(self.parent, bg=self.colormap.get_value(int(self.position_slider.get())).hex())  # this required updating common:color
-        self.insert_button     = tk.Button(self.parent, bg="grey")   # i was here before i had to go
-        self.delete_button     = tk.Button(self.parent, bg="grey")
-        self.jump_next_button  = tk.Button(self.parent, bg="grey")
-        self.reverse_button    = tk.Button(self.parent, bg="grey")
-        self.invert_button     = tk.Button(self.parent, bg="grey")
-        self.jump_prev_button  = tk.Button(self.parent, bg="grey")
-        self.adjoin_button     = tk.Button(self.parent, bg="grey")
-        self.double_button     = tk.Button(self.parent, bg="grey")
-        self.jump_first_button = tk.Button(self.parent, bg="grey")
-        self.save_button       = tk.Button(self.parent, bg="grey")
-        self.load_button       = tk.Button(self.parent, bg="grey")
-        self.jump_last_button  = tk.Button(self.parent, bg="grey")
+        self.color_button      = tk.Button(self.parent, bg=self.colormap.get_value(int(self.position_slider.get())).hex())  # this required updating common:color, write about
+        self.insert_button     = tk.Button(self.parent, bg="grey", text="Insert new\ncolor",             command=self.insert)
+        self.delete_button     = tk.Button(self.parent, bg="grey", text="Delete color\nat position",     command=self.delete)
+        self.jump_next_button  = tk.Button(self.parent, bg="grey", text="Jump to\nnext color",           command=self.jump_next)
+        self.reverse_button    = tk.Button(self.parent, bg="grey", text="Reverse\nColormap",             command=self.reverse)
+        self.invert_button     = tk.Button(self.parent, bg="grey", text="Invert\nColors",                command=self.invert)
+        self.jump_prev_button  = tk.Button(self.parent, bg="grey", text="Jump to\nprevious color",       command=self.jump_prev)
+        self.adjoin_button     = tk.Button(self.parent, bg="grey", text="Adjoin Colormap\nfrom file",    command=self.adjoin)
+        self.double_button     = tk.Button(self.parent, bg="grey", text="Compress and\ndouble colormap", command=self.double)
+        self.jump_first_button = tk.Button(self.parent, bg="grey", text="Jump to\nfirst color",          command=self.jump_first)
+        self.save_button       = tk.Button(self.parent, bg="grey", text="Save\nColormap",                command=self.save)
+        self.load_button       = tk.Button(self.parent, bg="grey", text="Load New\nColormap",            command=self.load)
+        self.jump_last_button  = tk.Button(self.parent, bg="grey", text="Jump to\nlast color",           command=self.jump_last)
 
         self.colormap_canvas.place(x=12, y=12, width=60, height=380)
 
@@ -506,7 +507,60 @@ class ColormapEditor(PopupWindow):
 
     def update_colormap(self):
         pass
-        # todo: displaying colormaps onto canvas objects, make a function for it that takes a canvas and colormap as arugments
+        # todo: displaying colormaps onto canvas objects, make a function for it that takes a canvas and colormap as arguments
+
+    def color(self):
+        pass
+
+    def insert(self):  # required new method
+        output = cc.askcolor()[0]
+        color = Color(*output, 255)
+        self.colormap.insert_value(color, int(self.position_slider.get()))
+        self.update_button()
+
+    def delete(self):
+        pass
+
+    def jump_next(self):
+        pass
+
+    def invert(self):
+        pass
+
+    def jump_prev(self):
+        pass
+
+    def adjoin(self):
+        logging.debug("User pressed button - 'Load Colormap'")
+        filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"), ("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
+        logging.debug(f"Absolute filepath opened is {filename}")
+        other_cmp = Colormap(None)  # None initialization is fine here as colormap is loaded
+        other_cmp.load(filename)
+        self.colormap = Colormap((self.colormap.get_gradient() + other_cmp.get_gradient())) #idk if this is right
+
+    def double(self):
+        pass
+
+    def jump_first(self):
+        self.position_slider.set(self.colormap.get_gradient()._color_peaks[0][1])     # protected access could be an issue
+
+    def save(self):
+        logging.debug("User pressed button - 'Save'")
+        filename = fd.asksaveasfilename(filetypes=[("Colormap File", "*.colormap"),("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
+        logging.debug(f"Absolute save path is {filename}")
+        self.colormap.save(filename.rstrip(".colormap"))
+
+    def load(self):
+        logging.debug("User pressed button - 'Load Colormap'")
+        filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"),("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
+        logging.debug(f"Absolute filepath opened is {filename}")
+        self.colormap.load(filename)
+
+    def jump_last(self):
+        self.position_slider.set(self.colormap.get_gradient()._color_peaks[-1][1])     # protected access could be an issue
+
+    def reverse(self):
+        pass
 
 
 class SupersamplingWindow(PopupWindow):
