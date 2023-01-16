@@ -1,5 +1,5 @@
 import os
-from math import floor, cos, sin
+from math import floor, cos, sin, ceil
 from typing import Callable, Union
 from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
@@ -236,6 +236,10 @@ class Color:
     def hex(self) -> str:
         return f"#{('0x%02X' % self.red)[2:]}{('0x%02X' % self.green)[2:]}{('0x%02X' % self.blue)[2:]}".lower()
 
+    def invert(self) -> None:
+        self.red = 255 - self.red
+        self.blue = 255 - self.blue
+        self.green = 255 - self.green
 
 class Gradient:
     """
@@ -272,24 +276,32 @@ class Gradient:
 
         return Color(red, green, blue, alpha)
 
+    def __add__(self, other):
+        if not isinstance(other, Gradient):
+            raise TypeError
+
+        right_color_peaks = [[x[0], x[1]+len(self)] for v, x in enumerate(other._color_peaks)]
+        right_color_peaks[0][1]+=1
+        return Gradient(self._color_peaks + right_color_peaks)
+
+    def __mul__(self, scalar: Union[float, int]):
+        return Gradient(list(map(lambda x: [x[0], ceil(x[1]*scalar)], self._color_peaks[:])))
+
+    def __rmul__(self, scalar: Union[float, int]):
+        return self*scalar
+
     def left_padd(self, padding: int):
         """
         Shifts a gradient wholly left by in timespace an integer
         """
         return Gradient(list(map(lambda x: [x[0], x[1]+padding], self._color_peaks[:])))
 
-    def __add__(self, other):
-        if not isinstance(other, Gradient):
-            raise TypeError
-
-        right_color_peaks = list(map(lambda x: [x[0], x[1]+len(self)], other._color_peaks))
-        return Gradient(self._color_peaks + right_color_peaks)
-
-    def __mul__(self, scalar: int):
-        return Gradient(list(map(lambda x: [x[0], x[1]*scalar], self._color_peaks[:])))
-
-    def __rmul__(self, scalar: int):
-        return self*scalar
+    def invert(self) -> None:
+        """
+        Inverts all colors in a gradient
+        """
+        for color, peak in self._color_peaks:
+            color.invert()
 
 
 class Colormap:
@@ -320,7 +332,39 @@ class Colormap:
     def __len__(self):
         return len(self._gradient)
 
-    def insert_value(self, color: Color, time: int) -> None:
+    def __add__(self, other):
+        return Colormap(self.get_gradient() + other.get_gradient())
+
+    def __mul__(self, other):
+        return Colormap(self.get_gradient() * other)
+
+    def __rmul__(self, other):
+        return Colormap(self.get_gradient() * other)
+
+    def __reversed__(self):
+        x = self.get_gradient().__getattribute__("_color_peaks")
+        cols = list(map(lambda a:a[0], x))
+        positions = list(map(lambda a: a[1], x))
+        new = list(zip(cols[::-1], positions))
+        self.get_gradient().__setattr__("_color_peaks", new)
+        return self
+
+    def invert(self) -> None:
+        """
+        Inverts all colors in a colormap
+        """
+        self._gradient.invert()
+
+    def left_padd(self, amount) -> None:
+        """
+        Encapsulates the inner gradients' left padd
+        """
+        self.set_gradient(self.get_gradient().left_padd(amount))
+
+    def insert_value(self, color: Color, time: int) -> None: #todo: move this to the Gradient class and encapsulate
+        """
+        Inserts a new color into the color peaks.
+        """
         to_insert = [color, time]
         logging.warning("Protected access of _color_peaks in method insert_value - could maybe cause issues?")
         x = [a[:] for a in self.get_gradient()._color_peaks[:]]
@@ -535,5 +579,13 @@ class Attractor:
         """
         _ = resolution, extension
         return self._camera.transform_space(self._points) #todo: this
-    
-    
+
+
+from tkinter import Canvas
+import time
+def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
+    colormap_len = len(colormap)
+
+    stretch_factor = height/colormap_len  # generally should be > 1 and integer but could cause issues
+    for i in range(colormap_len+1):
+        canvas.create_rectangle(0, i*stretch_factor, width, height, fill=colormap.get_value(i).hex(), outline="")

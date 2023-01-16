@@ -84,6 +84,11 @@ class MainPage(tk.Frame):
             default_overall = "x=x*t\\x\ny=y*t\\y"
 
         self.equation_box.insert(tk.END, default_overall)
+        self.update_canvas()
+
+    def update_canvas(self):
+        t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
+        t.start()
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
@@ -101,14 +106,14 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Edit Colormap'")
         logging.debug("Trying to open new window...")
         colormap_editor_window = tk.Toplevel(self.parent)
-        colormap_editor_app = ColormapEditor(colormap_editor_window, self.colormap)
+        colormap_editor_app = ColormapEditor(colormap_editor_window, self.colormap, self.set_colormap)
 
     def reset_colormap(self):
         logging.debug("User pressed button - 'Reset Colormap'")
         loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
         if not loaded:
             logging.error("Default colormap could not be loaded - reset failed.")
-
+        self.update_canvas()
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
         logging.debug("Trying to open new window...")
@@ -126,6 +131,7 @@ class MainPage(tk.Frame):
         filename = fd.asksaveasfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
         logging.debug(f"Absolute save path is {filename}")
         self.x=1
+
     def load_project(self):
         logging.debug("User pressed button - 'Load Project'")
         filename = fd.askopenfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
@@ -153,6 +159,10 @@ class MainPage(tk.Frame):
     def video(self):
         logging.debug("User pressed button - 'Video mode settings'")
         logging.error("Not yet implemented")
+
+    def set_colormap(self, colormap: Colormap):
+        self.colormap = colormap
+        self.update_canvas()
 
 
 #talk about using this parent class in design
@@ -323,7 +333,7 @@ class SearchWindow(PopupWindow):
         self.y_val_label['text'] = 1  # this needs to be changed to use the mouse pointer and scaling
 
 
-def update_needed(f):
+def update_needed_settings(f):
     def wrapper(*args): #talk about writing this algorithm as a wrapper
         logging.debug("Update needed for a settings frame...")
         x= f(*args)
@@ -354,32 +364,32 @@ class SettingsWindow(PopupWindow):
         self.frame_content = GeneralSettings
         self.frame_content(self.actual_settings_frame)
 
-    @update_needed
+    @update_needed_settings
     def general(self):
         logging.debug("User opened general tab of settings")
         self.frame_content = GeneralSettings
 
-    @update_needed
+    @update_needed_settings
     def rendering(self):
         logging.debug("User opened general tab of settings")
         self.frame_content = RenderingSettings
 
-    @update_needed
+    @update_needed_settings
     def files(self):
         logging.debug("User opened files tab of settings")
         self.frame_content = FilesSettings
 
-    @update_needed
+    @update_needed_settings
     def color(self):
         logging.debug("User opened color tab of settings")
         self.frame_content = ColorSettings
 
-    @update_needed
+    @update_needed_settings
     def ui(self):
         logging.debug("User opened ui tab of settings")
         self.frame_content = UISettings
 
-    @update_needed
+    @update_needed_settings
     def maths(self):
         logging.debug("User opened maths tab of settings")
         self.frame_content = MathsSettings
@@ -457,14 +467,26 @@ class SettingsBar:
 
 
 # talk about window design change while coding because it felt off during testing
+def updated_needed_colormap(f):
+    def wrapper(*args): #talk about writing this algorithm as a wrapper
+        logging.debug("Update needed for a colormap window...")
+        x= f(*args)
+        self = args[0]
+        self.update_colormap()
+        self.update_button()
+        return x
+    return wrapper  # talk about the None error you had from returning this
+
+
 class ColormapEditor(PopupWindow):
-    def __init__(self, parent, colormap: Colormap):
-        super().__init__(parent)
+    def __init__(self, parent, colormap: Colormap, save_callback: Callable):
+        super().__init__(parent, on_close=self.save_and_close)
         self.colormap = colormap
+        self.save_callback = save_callback
         self.parent = parent
         self.parent.geometry("650x400")
 
-        self.colormap_canvas = tk.Canvas(self.parent, bg="grey")
+        self.colormap_canvas = tk.Canvas(self.parent, bg="white")
 
         self.position_slider = tk.Scale(self.parent, from_=0, to=100, orient=tk.VERTICAL, command=self.update_button)
 
@@ -502,47 +524,80 @@ class ColormapEditor(PopupWindow):
 
         self.exit_button.place(x=179, y=345, width=462, height=45)
 
+        self.update_colormap()
+
     def update_button(self, *args):
         self.color_button.configure(bg=self.colormap.get_value(int(self.position_slider.get())).hex())
 
     def update_colormap(self):
-        pass
-        # todo: displaying colormaps onto canvas objects, make a function for it that takes a canvas and colormap as arguments
+        t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 380))
+        t.start()
 
     def color(self):
-        pass
+        pass  # why?
 
+    @updated_needed_colormap
     def insert(self):  # required new method
         output = cc.askcolor()[0]
         color = Color(*output, 255)
         self.colormap.insert_value(color, int(self.position_slider.get()))
-        self.update_button()
 
+    @updated_needed_colormap
     def delete(self):
-        pass
+        currentpos = self.position_slider.get()
+        poslist = list(map(lambda x: x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
+        if currentpos in poslist:
+            print("SO TRUE KING")
+            x = self.colormap.__getattribute__("_gradient").__getattribute__("color_peaks")
+            x.pop(poslist.index(currentpos))
+            self.colormap = Colormap(Gradient(x))
 
+    @updated_needed_colormap
     def jump_next(self):
-        pass
+        currentpos = self.position_slider.get()
+        poslist = list(map(lambda x:x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
+        for index, val in enumerate(poslist):
+            if val > currentpos:
+                self.position_slider.set(poslist[index])
+                return
 
-    def invert(self):
-        pass
+    @updated_needed_colormap
+    def invert(self):  # need a new method
+        self.colormap.invert()
 
+    @updated_needed_colormap
     def jump_prev(self):
-        pass
+        currentpos = self.position_slider.get()
+        poslist = list(map(lambda x: x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
+        if currentpos == 100:
+            self.position_slider.set(poslist[-2])
+            return
+        for index, val in enumerate(poslist):
+            if val > currentpos:
+                if poslist[index-1] == currentpos:
+                    self.position_slider.set(poslist[index-2])
+                else:
+                    self.position_slider.set(poslist[index - 1])
+                return
 
+    @updated_needed_colormap
     def adjoin(self):
         logging.debug("User pressed button - 'Load Colormap'")
         filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"), ("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
         logging.debug(f"Absolute filepath opened is {filename}")
         other_cmp = Colormap(None)  # None initialization is fine here as colormap is loaded
         other_cmp.load(filename)
-        self.colormap = Colormap((self.colormap.get_gradient() + other_cmp.get_gradient())) #idk if this is right
+        self.colormap += other_cmp
+        self.colormap *= 100/len(self.colormap)
 
-    def double(self):
-        pass
+    @updated_needed_colormap
+    def double(self):  # warraneted loads of common updates, added __stuff__ and had to change add logic to add the +1
+        self.colormap = self.colormap + self.colormap
+        self.colormap = self.colormap*0.5
 
+    @updated_needed_colormap
     def jump_first(self):
-        self.position_slider.set(self.colormap.get_gradient()._color_peaks[0][1])     # protected access could be an issue
+        self.position_slider.set(self.colormap.get_gradient().__getattribute__("_color_peaks")[0][1])     # protected access could be an issue
 
     def save(self):
         logging.debug("User pressed button - 'Save'")
@@ -556,11 +611,17 @@ class ColormapEditor(PopupWindow):
         logging.debug(f"Absolute filepath opened is {filename}")
         self.colormap.load(filename)
 
+    @updated_needed_colormap
     def jump_last(self):
-        self.position_slider.set(self.colormap.get_gradient()._color_peaks[-1][1])     # protected access could be an issue
+        self.position_slider.set(self.colormap.get_gradient().__getattribute__("_color_peaks")[-1][1])
 
-    def reverse(self):
-        pass
+    @updated_needed_colormap
+    def reverse(self):  # needed a new method
+        self.colormap = reversed(self.colormap)
+
+    def save_and_close(self, *args, **kwargs):
+        self.parent.destroy()
+        self.save_callback(self.colormap)
 
 
 class SupersamplingWindow(PopupWindow):
