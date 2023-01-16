@@ -1,11 +1,10 @@
-import tkinter as tk
-from tkinter import filedialog as fd
-from tkinter import colorchooser as cc
 import threading
-import sys
-import logging
-from core.common import *
+import tkinter as tk
+from tkinter import colorchooser as cc
+from tkinter import filedialog as fd
 from tkinter.scrolledtext import ScrolledText
+
+from core.common import *
 
 
 class MainPage(tk.Frame):
@@ -16,6 +15,7 @@ class MainPage(tk.Frame):
         self.parent.resizable(False, False)
         self.x = 1  # temp to make linter be quiet about project save/load being static but not declared as such
 
+        self.attractor = 1  # Attractor placeholder
         self.colormap = Colormap(None)  # Initialised with None as colormap is loaded straight away
         loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
         if not loaded:
@@ -124,7 +124,7 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Supersampling'")
         logging.debug("Trying to open new window...")
         supersampling_config_window = tk.Toplevel(self.parent)
-        supersampling_config_app = SupersamplingWindow(supersampling_config_window)
+        supersampling_config_app = SupersamplingWindow(supersampling_config_window, self.attractor)
 
     def save_project(self):
         logging.debug("User pressed button - 'Save Project'")
@@ -547,8 +547,7 @@ class ColormapEditor(PopupWindow):
         currentpos = self.position_slider.get()
         poslist = list(map(lambda x: x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
         if currentpos in poslist:
-            print("SO TRUE KING")
-            x = self.colormap.__getattribute__("_gradient").__getattribute__("color_peaks")
+            x = self.colormap.__getattribute__("_gradient").__getattribute__("_color_peaks")
             x.pop(poslist.index(currentpos))
             self.colormap = Colormap(Gradient(x))
 
@@ -625,12 +624,48 @@ class ColormapEditor(PopupWindow):
 
 
 class SupersamplingWindow(PopupWindow):
-    def __init__(self, parent):
-        super().__init__(self, parent)
+    def __init__(self, parent, attractor):
+        super().__init__(parent)
         self.parent = parent
-        self.parent.geometry("600x400") #todo: design this window
+        self.parent.geometry("400x300")
+        self.attractor = attractor
+        self.enabled = 1  # self.attractor.supersampling_enabled
 
+        self.algo_label     = tk.Label(self.parent, bg="grey", text="Sampling\nAlgorithm")
+        self.x_res_label    = tk.Label(self.parent, bg="grey", text="X\nRes")
+        self.y_res_label    = tk.Label(self.parent, bg="grey", text="Y\nRes")
 
+        self.x_res_slider   = tk.Scale(self.parent, orient=tk.HORIZONTAL, from_=128, to=4096)
+        self.y_res_slider   = tk.Scale(self.parent, orient=tk.HORIZONTAL, from_=128, to=4096)
+        self.x_res_slider.set(1920)
+        self.y_res_slider.set(1080)
+
+        algo_options = ["Poisson-disc", "Quincux", "Grid", "Rotated Grid"]
+        self.algo = tk.StringVar()
+        self.algo.set("Poisson-disc")
+        self.algo_dropdown = tk.OptionMenu(self.parent, self.algo, *algo_options)
+
+        self.enable_button  = tk.Button(self.parent, bg="grey", text="Enable Supersampling", command=self.enable)
+        self.reset_button   = tk.Button(self.parent, bg="grey", text="Reset to default", command=self.reset)
+
+        self.algo_label    .place(x=12, y=20, width=58, height=32)
+        self.x_res_label   .place(x=12, y=66, width=58, height=32)
+        self.y_res_label   .place(x=12, y=112, width=58, height=32)
+
+        self.x_res_slider  .place(x=75, y=66, width=311, height=32)
+        self.y_res_slider  .place(x=75, y=112, width=311, height=32)
+
+        self.algo_dropdown.place(x=75, y=20, width=311, height=32)
+
+        self.enable_button .place(x=12, y=167, width=170,height=60)
+        self.reset_button  .place(x=217, y=167, width=170, height=60)
+        self.exit_button   .place(x=12, y=242, width=375, height=45)
+
+    def enable(self):
+        self.enabled = (1, 0)[self.enabled]
+
+    def reset(self):
+        pass # todo: default settings load here
 def main():
     initialise_logger(True)  # change to false during prod
     structure_check(getcwd())
