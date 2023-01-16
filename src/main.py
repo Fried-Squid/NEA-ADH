@@ -15,7 +15,6 @@ class MainPage(tk.Frame):
         self.parent.resizable(False, False)
         self.x = 1  # temp to make linter be quiet about project save/load being static but not declared as such
 
-        self.attractor = 1  # Attractor placeholder
         self.colormap = Colormap(None)  # Initialised with None as colormap is loaded straight away
         loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
         if not loaded:
@@ -84,11 +83,30 @@ class MainPage(tk.Frame):
             default_overall = "x=x*t\\x\ny=y*t\\y"
 
         self.equation_box.insert(tk.END, default_overall)
-        self.update_canvas()
+        self.update_colormap_canvas()
 
-    def update_canvas(self):
+        self.func = lambda: None
+        self.parse_eqs()
+
+        self.start_pos = [0, 0]
+        self.tail_end = 1
+
+        self.settings = Settings(self.colormap)
+        self.camera   = Camera(0, 0, 0, (1,1), 10)
+        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings, self.preview_canvas)
+
+
+
+    def update_colormap_canvas(self):
         t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
         t.start()
+
+    def update_preview_canvas(self):
+        pass
+
+    def parse_eqs(self):
+        rawtext = self.equation_box.get(0, tk.END)
+        self.func = parse_eq(rawtext)
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
@@ -113,7 +131,7 @@ class MainPage(tk.Frame):
         loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
         if not loaded:
             logging.error("Default colormap could not be loaded - reset failed.")
-        self.update_canvas()
+        self.update_colormap_canvas()
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
         logging.debug("Trying to open new window...")
@@ -162,7 +180,7 @@ class MainPage(tk.Frame):
 
     def set_colormap(self, colormap: Colormap):
         self.colormap = colormap
-        self.update_canvas()
+        self.update_colormap_canvas()
 
 
 #talk about using this parent class in design
