@@ -21,7 +21,7 @@ class MainPage(tk.Frame):
             logging.critical("Default colormap could not be loaded. Exiting...")
             exit(126)
 
-        self.preview_canvas = tk.Canvas(self.parent, bg="grey")
+        self.preview_canvas = tk.Canvas(self.parent, bg="white")
         self.colormap_canvas = tk.Canvas(self.parent, bg="grey")
 
         self.preview_label = tk.Label(self.parent, text="Preview Window")
@@ -85,23 +85,25 @@ class MainPage(tk.Frame):
         self.equation_box.insert(tk.END, default_overall)
         self.update_colormap_canvas()
 
-        self.func = lambda: None
-        self.parse_eqs()
-
         self.start_pos = [0, 0]
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)
-        self.camera   = Camera(0, 0, 0, (1, 1), 10)
-        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings, self.preview_canvas)
+        self.camera   = Camera([-2, 2], [2, -2], 0)
 
-        self.preview_render_thread = self.attractor.async_render([400, 400], self.preview_canvas)
+        self.attractor = None
+        self.preview_render_thread = None
+        self.func = None
+
+        self.parse_eqs()
 
     def update_colormap_canvas(self):
         t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
         t.start()
 
     def start_preview_render_thread(self):
+        self.parse_eqs()
+        self.preview_render_thread = self.attractor.async_render([400, 400], self.preview_canvas)
         self.preview_render_thread.start()
 
     def stop_preview_render_thread(self):
@@ -109,8 +111,9 @@ class MainPage(tk.Frame):
 
     def parse_eqs(self):
         rawtext = self.equation_box.get("1.0", tk.END)
-        print(rawtext)
         self.func = parse_eq(rawtext)
+        del self.attractor
+        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings, self.preview_canvas)
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
