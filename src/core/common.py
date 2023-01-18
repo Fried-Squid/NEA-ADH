@@ -1,5 +1,6 @@
 import os
 from math import floor, cos, sin, ceil
+from threading import Thread
 from typing import Callable, Union
 from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
@@ -118,7 +119,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     logging.debug("Parsing new equation...")
     if "x=" in text:
         start_x = text.find("x=")
-        end_x = text.find("\\x")
+        end_x = text.find(r"\\x")
         expression_x = text[start_x:end_x]
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"X Expression was found - [{expression_x}]")
@@ -144,7 +145,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     
     if "y=" in text:
         start_y = text.find("y=")
-        end_y = text.find("\\y")
+        end_y = text.find(r"\\y")
         expression_y = text[start_y:end_y]
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"Y Expression was found - [{expression_y}]")
@@ -496,16 +497,16 @@ class Camera:
     """
     Class that manages camera transforms
     """
-    def __init__(self, xpos:float, ypos:float , rotation:float, aspect_ratio:tuple[int,int], scale:float):
+    def __init__(self, xpos: float, ypos: float , rotation: float, aspect_ratio: tuple[int,int], scale:float):
         self._pos   = (xpos, ypos)
         self._rot   = rotation
         self._scale = scale
         self._ar    = aspect_ratio
         self.implicit_res = [x*scale for x in aspect_ratio]
 
-        self._translate = lambda x,y: (x-self._pos[0], y-self._pos[1])
-        self._rotate    = lambda x,y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
-        self._scale     = lambda x,y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
+        self._translate = lambda x, y: (x-self._pos[0], y-self._pos[1])
+        self._rotate    = lambda x, y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
+        self._scale     = lambda x, y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
 
         logging.debug(f"New Camera object instantiated at {hex(id(self))}")
 
@@ -530,16 +531,17 @@ class Emitter:
     """
     Where the magic happens
     """
-    def __init__(self, x_func: Callable[[int], int], y_func: Callable[[int], int], pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
-        self._x_func, self._y_func, self._pos, self._tail_end = x_func, y_func, pos, tail_end
+    def __init__(self, func: Callable, pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
+        self._func, self._pos, self._tail_end = func, pos, tail_end
         self._time = time_offset
 
         logging.debug(f"New Emitter object instantiated at {hex(id(self))}")
+
     def new_point(self) -> tuple[list, int, bool]:
         """
         Generate a new point
         """
-        self._pos = (lambda f_x, f_y, x,y: [f_x(x), f_y(y)])(self._x_func, self._y_func, self._pos[0], self._pos[1]) #shut the fuck up linter iifes are cool
+        self._pos = self._func(self._pos, self._time)
         self._time += 1
         return self._pos[:], self._time, (self._time -1 > self._tail_end)
 
@@ -548,31 +550,52 @@ class Settings:
     """
     Will hold preferences. Just a datastruct.
     """
+    def __init__(self, colormap):
+        self.colormap = colormap
+
+
+from tkinter import Canvas
 
 
 class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], points: list, camera: Camera,settings: Settings) -> None:
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, canvas: Canvas, supersampled=False, supersampling_factor=None) -> None:
+        self.supersampled = supersampled
+        self.supersampling_factor = supersampling_factor
+        self._canvas   = canvas
         self._emitters = emitters
         self._points   = points
         self._settings = settings
         self._size     = len(self._points)
         self._camera   = camera
+        self.colormap = self._settings.colormap
 
         logging.debug(f"New Attractor object instantiated at {hex(id(self))}")
 
-    def timestep(self) -> None:
+    def timestep(self, transform = False) -> list:
         """
         Advance time.
         """
+        newpoints = []
         for emitter in self._emitters:
-            colormap = self._settings.colormap
-            (new_x, new_y), time, displayed = emitter.new_point(self)
+            colormap = self._settings.colormap * 100 # bad
+            (new_x, new_y), time, displayed = emitter.new_point()
             if displayed:
-                self._points.append(Point(colormap.get_value(time), [new_x, new_y]))
+                newpoints.append(Point(colormap.get_value(time%len(colormap)), [new_x, new_y]))
+        self._points += newpoints
+        if transform:
+            return self._camera.transform_space(newpoints)
+        return newpoints
 
+    def async_render(self, resolution: list[int], canvas: Canvas ):
+        def render_thread():
+            renderer = Renderer(resolution, self.timestep, canvas, self.colormap)
+            while True:
+                next(renderer)
+        thread = Thread(target=render_thread)
+        return thread
     def render(self, resolution: list[int], extension: str) -> Image:
         """
         Render self.
@@ -581,8 +604,26 @@ class Attractor:
         return self._camera.transform_space(self._points) #todo: this
 
 
-from tkinter import Canvas
-import time
+class Renderer:
+    def __init__(self, resolution: list[int], timestep_callback, canvas, colormap: Colormap) -> None:
+        self.colormap = colormap
+        self.resolution = resolution
+        self.canvas = canvas
+        self.timestep = timestep_callback
+        self.time = 0
+
+    def __next__(self):
+        self.time += 1
+        if self.time > len(self.colormap):
+            self.time = 0
+        for point in self.timestep():
+            x, y = point.get_pos()
+            hex_color = point.get_color().hex()
+            x *= 100 #also bad
+            y *= 100
+            x += 200
+            y += 200
+            self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
     colormap_len = len(colormap)
 
