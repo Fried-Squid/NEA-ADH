@@ -1,5 +1,6 @@
 import os
 from math import floor, cos, sin, ceil
+from threading import Thread
 from typing import Callable, Union
 from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
@@ -118,7 +119,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     logging.debug("Parsing new equation...")
     if "x=" in text:
         start_x = text.find("x=")
-        end_x = text.find("\\x")
+        end_x = text.find(r"\\x")
         expression_x = text[start_x:end_x]
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"X Expression was found - [{expression_x}]")
@@ -144,7 +145,7 @@ def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09
     
     if "y=" in text:
         start_y = text.find("y=")
-        end_y = text.find("\\y")
+        end_y = text.find(r"\\y")
         expression_y = text[start_y:end_y]
         loc={"x":1,"y":1,"t":2}
         logging.debug(f"Y Expression was found - [{expression_y}]")
@@ -563,13 +564,13 @@ class Attractor:
     def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, canvas: Canvas, supersampled=False, supersampling_factor=None) -> None:
         self.supersampled = supersampled
         self.supersampling_factor = supersampling_factor
-        self.colormap  = self._settings.colormap
         self._canvas   = canvas
         self._emitters = emitters
         self._points   = points
         self._settings = settings
         self._size     = len(self._points)
         self._camera   = camera
+        self.colormap = self._settings.colormap
 
         logging.debug(f"New Attractor object instantiated at {hex(id(self))}")
 
@@ -579,8 +580,8 @@ class Attractor:
         """
         newpoints = []
         for emitter in self._emitters:
-            colormap = self._settings.colormap
-            (new_x, new_y), time, displayed = emitter.new_point(self)
+            colormap = self._settings.colormap * 100 # bad
+            (new_x, new_y), time, displayed = emitter.new_point()
             if displayed:
                 newpoints.append(Point(colormap.get_value(time%len(colormap)), [new_x, new_y]))
         self._points += newpoints
@@ -588,9 +589,13 @@ class Attractor:
             return self._camera.transform_space(newpoints)
         return newpoints
 
-    def async_render(self, resolution: list[int], canvas: Canvas, ):
-        return AsyncRenderer(resolution, self.timestep, canvas, self.colormap)
-
+    def async_render(self, resolution: list[int], canvas: Canvas ):
+        def render_thread():
+            renderer = Renderer(resolution, self.timestep, canvas, self.colormap)
+            while True:
+                next(renderer)
+        thread = Thread(target=render_thread)
+        return thread
     def render(self, resolution: list[int], extension: str) -> Image:
         """
         Render self.
@@ -599,7 +604,7 @@ class Attractor:
         return self._camera.transform_space(self._points) #todo: this
 
 
-class AsyncRenderer:
+class Renderer:
     def __init__(self, resolution: list[int], timestep_callback, canvas, colormap: Colormap) -> None:
         self.colormap = colormap
         self.resolution = resolution
@@ -613,8 +618,12 @@ class AsyncRenderer:
             self.time = 0
         for point in self.timestep():
             x, y = point.get_pos()
-            hexcolor = point.get_color().hex()
-            self.canvas.create_line(x, y, x + 1, y, fill=hexcolor)
+            hex_color = point.get_color().hex()
+            x *= 100 #also bad
+            y *= 100
+            x += 200
+            y += 200
+            self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
     colormap_len = len(colormap)
 

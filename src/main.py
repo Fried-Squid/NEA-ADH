@@ -92,20 +92,24 @@ class MainPage(tk.Frame):
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)
-        self.camera   = Camera(0, 0, 0, (1,1), 10)
+        self.camera   = Camera(0, 0, 0, (1, 1), 10)
         self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings, self.preview_canvas)
 
-
+        self.preview_render_thread = self.attractor.async_render([400, 400], self.preview_canvas)
 
     def update_colormap_canvas(self):
         t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
         t.start()
 
-    def update_preview_canvas(self):
-        pass
+    def start_preview_render_thread(self):
+        self.preview_render_thread.start()
+
+    def stop_preview_render_thread(self):
+        pass #todo: thread killing lol
 
     def parse_eqs(self):
-        rawtext = self.equation_box.get(0, tk.END)
+        rawtext = self.equation_box.get("1.0", tk.END)
+        print(rawtext)
         self.func = parse_eq(rawtext)
 
     def save_colormap(self):
@@ -171,6 +175,8 @@ class MainPage(tk.Frame):
     def render(self):
         logging.debug("User pressed button - 'Render'")
         self.x = 1
+        #temp to test previous
+        self.start_preview_render_thread()
         # self.attractor.render(self.settings.resolution, self.settings.extension)
 
     @staticmethod
