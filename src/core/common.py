@@ -1,6 +1,7 @@
 import os
+import threading
 from math import floor, cos, sin, ceil
-from threading import Thread
+from threading import Thread, Event
 from typing import Callable, Union
 from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
@@ -10,6 +11,7 @@ from datetime import datetime
 
 # pylint: disable=logging-fstring-interpolation
 # pylint: disable=invalid-name
+
 
 def initialise_logger(debug: bool):
     """
@@ -110,6 +112,7 @@ def structure_check(dir: str):
         logging.warning("No samples found, possibly deleted by user.")
 
     logging.info("StructureCheck Complete.")
+
 
 def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09:51 12/01/23
     """
@@ -213,6 +216,22 @@ def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
     return max(abs(x_1-x_2), abs(y_1-y_2))
 
 
+class WorkerThread(threading.Thread):
+    """
+    Thread with a stop method
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stop = Event()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def is_stopped(self) -> bool:
+        return self._stop.is_set()
+
+
 class RangeError(ValueError):
     """ Honestly not sure why this is required. """
     def __init__(self):
@@ -241,6 +260,7 @@ class Color:
         self.red = 255 - self.red
         self.blue = 255 - self.blue
         self.green = 255 - self.green
+
 
 class Gradient:
     """
@@ -477,6 +497,27 @@ class Point:
         """
         return self._pos[:]
 
+    def rotate(self, angle, origin):
+        """
+        Rotates the point around an origin
+        """
+        px, py = self.get_pos()
+        ox, oy = origin
+        sinA = sin(angle)
+        cosA = cos(angle)
+        nx = ox + cosA*(px-ox)-sinA*(py-oy)
+        ny = oy + sinA*(px-ox)-cosA*(py-oy)
+        self._pos = [nx,ny]
+
+    def translate(self, vector: list[float]):
+        """
+        Translates a point by a vector
+        """
+        self._pos = [x+y for x, y in zip(self.get_pos(), vector)]
+
+    def scale_by_dims(self, scalars: list[float]):
+        self._pos = [x*y for x, y in zip(self.get_pos(), scalars)]
+
 
 class Image:
     """
@@ -497,34 +538,38 @@ class Camera:
     """
     Class that manages camera transforms
     """
-    def __init__(self, xpos: float, ypos: float , rotation: float, aspect_ratio: tuple[int,int], scale:float):
-        self._pos   = (xpos, ypos)
-        self._rot   = rotation
-        self._scale = scale
-        self._ar    = aspect_ratio
-        self.implicit_res = [x*scale for x in aspect_ratio]
-
-        self._translate = lambda x, y: (x-self._pos[0], y-self._pos[1])
-        self._rotate    = lambda x, y: (x*cos(self._rot)-y*sin(self._rot), x*sin(self._rot)+y*cos(self._rot))
-        self._scale     = lambda x, y: 1 if all([abs(self._translate(x,y)[0])<self._ar[0]*self._scale,abs(self._translate(x,y)[1])<self._ar[1]*self._scale]) else 0
+    def __init__(self, top_left: list[float, float], bottom_right: list[float, float], rotation: float):
+        self._plane = [top_left, bottom_right]
+        self._center = [(top_left[0] + bottom_right[0])/ 2, (top_left[1] + bottom_right[1])/ 2]
+        self._rotation = rotation
 
         logging.debug(f"New Camera object instantiated at {hex(id(self))}")
 
-    def transform_point(self, x_val: float, y_val:float) -> Union[tuple, None]: #relative to the centered camera plane
+    def get_plane(self, space: list[Point]) -> list[Point]:
         """
-        Transforms a point to be in space relative to a camera plane with centered origin
+        Returns the perspective plane of the camera on a spcae
         """
-        if self._scale(x_val,y_val):
-            x_val,y_val = self._translate(x_val,y_val)
-            return self._rotate(x_val,y_val)
-        else:
-            return None
+        (min_x, max_y),(max_x, min_y) = self._plane
+        plane = []
+        for point in space:
+            x,y = point.get_pos()
+            if min_x <= x <= max_x and min_y <= y <= max_x:
+                if self._rotation != 0.0:
+                    point.rotate(-self._rotation, self._center)
+                plane.append(point)
+        return plane
 
-    def transform_space(self, points: list[list[float]]) -> Union[list[list[float]], list]:
+    def scale_to_resolution(self, plane: list[Point], res: list[int]):
         """
-        Transform a set of points
+        Scales the perspective plane to span a resolution
         """
-        return list(filter(lambda x:x is not None, map(lambda vec: self.transform_point(vec[0], vec[1]), points)))
+        (min_x, max_y), (max_x, min_y) = self._plane
+        translate = [-min_x, -min_y]  # translates the top left point in the plane to the 0,0 pixel position
+        # lc's are faster :)
+        [x.translate(translate) for x in plane]
+        [x.scale_by_dims([res[0]/(max_x-min_y), res[1]/(max_y-min_y)]) for x in plane]  # scales it to the resolution
+
+        return plane
 
 
 class Emitter:
@@ -543,15 +588,16 @@ class Emitter:
         """
         self._pos = self._func(self._pos, self._time)
         self._time += 1
-        return self._pos[:], self._time, (self._time -1 > self._tail_end)
+        return self._pos[:], self._time, (self._time >= self._tail_end)
 
 
 class Settings:
     """
     Will hold preferences. Just a datastruct.
     """
-    def __init__(self, colormap):
+    def __init__(self, colormap, colormap_scale_factor = 100):
         self.colormap = colormap
+        self.colormap_scale_factor = colormap_scale_factor
 
 
 from tkinter import Canvas
@@ -561,41 +607,54 @@ class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, canvas: Canvas, supersampled=False, supersampling_factor=None) -> None:
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, supersampled=False, supersampling_factor=None) -> None:
         self.supersampled = supersampled
         self.supersampling_factor = supersampling_factor
-        self._canvas   = canvas
         self._emitters = emitters
         self._points   = points
         self._settings = settings
         self._size     = len(self._points)
         self._camera   = camera
-        self.colormap = self._settings.colormap
+        self.colormap = self._settings.colormap * self._settings.colormap_scale_factor
+        self.colormap_len = len(self.colormap)
 
         logging.debug(f"New Attractor object instantiated at {hex(id(self))}")
 
-    def timestep(self, transform = False) -> list:
+    def timestep(self) -> list:
         """
         Advance time.
         """
         newpoints = []
         for emitter in self._emitters:
-            colormap = self._settings.colormap * 100 # bad
-            (new_x, new_y), time, displayed = emitter.new_point()
+            pos, time, displayed = emitter.new_point()
             if displayed:
-                newpoints.append(Point(colormap.get_value(time%len(colormap)), [new_x, new_y]))
+                newpoints.append(Point(self.colormap.get_value(time % self.colormap_len), pos))
         self._points += newpoints
-        if transform:
-            return self._camera.transform_space(newpoints)
-        return newpoints
 
-    def async_render(self, resolution: list[int], canvas: Canvas ):
-        def render_thread():
-            renderer = Renderer(resolution, self.timestep, canvas, self.colormap)
-            while True:
-                next(renderer)
-        thread = Thread(target=render_thread)
+        return self._camera.get_plane(newpoints)
+
+    def async_render(self, resolution: list[int], canvas: Canvas):
+        canvas.delete("all")
+
+        class RenderThread(WorkerThread):  # This is so weird
+            def __init__(self, timestep, colormap, camera, canvas_inner, resolution_inner):
+                super().__init__()
+                self.timestep = timestep
+                self.colormap = colormap
+                self.camera = camera
+                self.canvas = canvas_inner
+                self.resolution = resolution_inner
+                self.iters = 0
+
+            def run(self) -> None:
+                renderer = Renderer(self.resolution, self.timestep, self.canvas, self.colormap, self.camera)
+                while not self.is_stopped() and self.iters < 25000:
+                    next(renderer)
+                    self.iters += 1
+
+        thread = RenderThread(self.timestep, self.colormap, self._camera, canvas, resolution)
         return thread
+
     def render(self, resolution: list[int], extension: str) -> Image:
         """
         Render self.
@@ -605,25 +664,24 @@ class Attractor:
 
 
 class Renderer:
-    def __init__(self, resolution: list[int], timestep_callback, canvas, colormap: Colormap) -> None:
+    def __init__(self, resolution: list[int], timestep_callback, canvas, colormap: Colormap, camera: Camera) -> None:
         self.colormap = colormap
         self.resolution = resolution
         self.canvas = canvas
         self.timestep = timestep_callback
+        self.camera = camera
         self.time = 0
 
     def __next__(self):
         self.time += 1
         if self.time > len(self.colormap):
             self.time = 0
-        for point in self.timestep():
+        for point in self.camera.scale_to_resolution(self.timestep(), self.resolution):
             x, y = point.get_pos()
             hex_color = point.get_color().hex()
-            x *= 100 #also bad
-            y *= 100
-            x += 200
-            y += 200
             self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
+
+
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
     colormap_len = len(colormap)
 
