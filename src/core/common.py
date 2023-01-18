@@ -1,6 +1,7 @@
 import os
+import threading
 from math import floor, cos, sin, ceil
-from threading import Thread
+from threading import Thread, Event
 from typing import Callable, Union
 from os import listdir, makedirs, getcwd, remove
 from os.path import isfile, join, exists
@@ -213,6 +214,22 @@ def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:
     """
     (x_1, y_1), (x_2, y_2) = vec1, vec2
     return max(abs(x_1-x_2), abs(y_1-y_2))
+
+
+class WorkerThread(threading.Thread):
+    """
+    Thread with a stop method
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stop = Event()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def is_stopped(self) -> bool:
+        return self._stop.is_set()
 
 
 class RangeError(ValueError):
@@ -590,10 +607,9 @@ class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, canvas: Canvas, supersampled=False, supersampling_factor=None) -> None:
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, supersampled=False, supersampling_factor=None) -> None:
         self.supersampled = supersampled
         self.supersampling_factor = supersampling_factor
-        self._canvas   = canvas
         self._emitters = emitters
         self._points   = points
         self._settings = settings
@@ -617,12 +633,26 @@ class Attractor:
 
         return self._camera.get_plane(newpoints)
 
-    def async_render(self, resolution: list[int], canvas: Canvas ):
-        def render_thread():
-            renderer = Renderer(resolution, self.timestep, canvas, self.colormap, self._camera)
-            while True:
-                next(renderer)
-        thread = Thread(target=render_thread)
+    def async_render(self, resolution: list[int], canvas: Canvas):
+        canvas.delete("all")
+
+        class RenderThread(WorkerThread):  # This is so weird
+            def __init__(self, timestep, colormap, camera, canvas_inner, resolution_inner):
+                super().__init__()
+                self.timestep = timestep
+                self.colormap = colormap
+                self.camera = camera
+                self.canvas = canvas_inner
+                self.resolution = resolution_inner
+                self.iters = 0
+
+            def run(self) -> None:
+                renderer = Renderer(self.resolution, self.timestep, self.canvas, self.colormap, self.camera)
+                while not self.is_stopped() and self.iters < 25000:
+                    next(renderer)
+                    self.iters += 1
+
+        thread = RenderThread(self.timestep, self.colormap, self._camera, canvas, resolution)
         return thread
 
     def render(self, resolution: list[int], extension: str) -> Image:
@@ -644,12 +674,11 @@ class Renderer:
 
     def __next__(self):
         self.time += 1
-        if self.time > len(self.colormap) * 100:  # bad
+        if self.time > len(self.colormap):
             self.time = 0
         for point in self.camera.scale_to_resolution(self.timestep(), self.resolution):
             x, y = point.get_pos()
             hex_color = point.get_color().hex()
-
             self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
 
 
