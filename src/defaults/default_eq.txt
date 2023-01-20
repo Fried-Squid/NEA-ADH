@@ -1,0 +1,2 @@
+dx=sin(x*y/b)*y+cos(a*x-y)
+dy=x+sin(y)/b

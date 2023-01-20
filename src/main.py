@@ -106,24 +106,20 @@ class MainPage(tk.Frame):
 
         logging.debug("Inserting default equations into text box...")
         try:
-            default_x = open("defaults/default_eq_x.txt", "r", encoding="utf-8")
-            default_y = open("defaults/default_eq_y.txt", "r", encoding="utf-8")
+            default = open("defaults/default_eq.txt", "r", encoding="utf-8")
 
-            default_x_text = """""".join(default_x.readlines())
-            default_y_text = """""".join(default_y.readlines())
-            default_x.close()
-            default_y.close()
+            default_text = """""".join(default.readlines())
+            default.close()
 
-            default_overall = default_x_text + '\n' + default_y_text
         except Exception as e:
             logging.error("Loading defaults failed, reverting to hardcode backup [x=xt, y=yt]...")
             logging.error(f"Internal error - {e}")
             default_overall = "x=x*t\\x\ny=y*t\\y"
 
-        self.equation_box.insert(tk.END, default_overall)
+        self.equation_box.insert(tk.END, default_text)
         self.update_colormap()
 
-        self.start_pos = [0, 0]
+        self.start_pos = [1, 1]
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)
@@ -134,6 +130,10 @@ class MainPage(tk.Frame):
         self.preview_render_thread = None
         self.func = None
         self.rendering = False
+
+        self.default_param_value = 1
+        self.params = None
+        self.params_dict = None
 
         self.camera = Camera([-2, 2], [2, -2], self.cam_rotation)
         self.parse_eqs()
@@ -166,9 +166,10 @@ class MainPage(tk.Frame):
     @updates_preview
     def parse_eqs(self):
         rawtext = self.equation_box.get("1.0", tk.END)
-        self.func = parse_eq(rawtext)
+        self.params, self.func = parse_eq(rawtext)
+        self.params_dict = self.process_new_params()
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
@@ -205,7 +206,7 @@ class MainPage(tk.Frame):
         self.vwin_params = xs, ys, xe, ye
         self.camera = Camera([xs, ye], [xe, ys], self.cam_rotation)
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
@@ -239,18 +240,39 @@ class MainPage(tk.Frame):
         settings_window = tk.Toplevel(self.parent)
         settings_app = SettingsWindow(settings_window)
 
-    @updates_preview
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
         logging.debug("Trying to open new window...")
         param_window = tk.Toplevel(self.parent)
-        param_app = ParameterSettingsWindow(param_window)
+        param_app = ParameterSettingsWindow(param_window, self.params, self.params_save_callback, existing_params = self.params_dict)
+
+    @updates_preview
+    def params_save_callback(self, params_dict: dict):
+        self.params_dict = params_dict
+        del self.attractor
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+
+    @updates_preview
+    def process_new_params(self):
+        old_params = self.params_dict
+        if old_params is None:
+            old_params = {}
+        new_param_keys = []
+        new_param_vals = []
+        for param in self.params:
+            new_param_keys.append(param)
+            try:
+                new_param_vals.append(old_params[param])
+            except KeyError:
+                new_param_vals.append(self.default_param_value)
+        new = dict(zip(new_param_keys, new_param_vals))
+        return new
 
     def render(self):
         logging.debug("User pressed button - 'Render'")
         self.x = 1
         self.parse_eqs()
-        #temp to test previous
+        # temp to test previous
         # self.attractor.render(self.settings.resolution, self.settings.extension)
 
     @staticmethod
@@ -263,7 +285,7 @@ class MainPage(tk.Frame):
         self.colormap = colormap
         self.settings.colormap = colormap
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
 
 # talk about using this parent class in design
@@ -283,22 +305,68 @@ class PopupWindow:
         self.parent.destroy()
 
 
+# Gist credit: https://gist.github.com/mp035/9f2027c3ef9172264532fcd6262f3b01. Licensed under https://mozilla.org/MPL/2.0/.
+from core.mp035_ScrollFrame import ScrollFrame
+
+
 class ParameterSettingsWindow(PopupWindow):
-    def __init__(self, parent):
+    def __init__(self, parent, params, params_save_callback, existing_params={},default_value=0):
         super().__init__(parent, on_close=self.save)
         self.parent.geometry("400x200")
+        self.params, self.params_save_callback = params, params_save_callback
+        keys, vals = [], []
+        for k,v in zip(existing_params.keys(), existing_params.values()):
+            keys.append(k)
+            if k in self.params:
+                vals.append(v)
+            else:
+                vals.append(default_value)
+        self.param_dict = dict(zip(keys, vals))
 
-        self.temp_text_box = ScrolledText(self.parent)
+        self.param_scroll_frame = ScrollFrame(self.parent)
+        self.entries_dict = None
+        self.sliders_dict = None
+        self.display()
 
-        self.temp_text_box.place(x=12, y=14, height=120, width=375)
+        self.param_scroll_frame.place(x=12,y=5, height=135, width=375)
         self.exit_button.place(x=12, y=147, height=45, width=375)
 
         logging.debug("ParameterSettings window initialized.")
 
-        self.temp_text_box.insert(tk.END, "Todo: parameters backend")
+    def display(self):
+        dict_keys = []
+        param_slider_dict_vals = []
+        param_entry_dict_vals = []
+
+        for index, param in enumerate(self.params):
+            dict_keys.append(param)
+
+            tk.Label(self.param_scroll_frame.viewPort, text=param, width=6).grid(row=index,columnspan=2,column=0, padx=5, pady=5)
+
+            new_slider = tk.Scale(self.param_scroll_frame.viewPort, orient=tk.HORIZONTAL, from_=-10, to=10, showvalue=False, width=10,length=240, command=self.sliders_updated)
+            new_slider.grid(row=index, columnspan=20, column=2, pady=5)
+            param_slider_dict_vals.append(new_slider)
+
+            new_entry = tk.Entry(self.param_scroll_frame.viewPort, width=6)
+            new_entry.grid(row=index, columnspan=2, column=23, padx=5, pady=5)
+            param_entry_dict_vals.append(new_entry)
+
+            new_slider.set(self.param_dict[param]*10)
+
+        self.entries_dict = dict(zip(dict_keys, param_entry_dict_vals))
+        self.sliders_dict = dict(zip(dict_keys, param_slider_dict_vals))
+
+    def sliders_updated(self, *args):
+        for param, slider, entry in list(zip(self.entries_dict.keys(), self.sliders_dict.values(),self.entries_dict.values())):
+            val = slider.get()/10
+            entry.delete(0, tk.END)
+            entry.insert(tk.END, str(val))
 
     def save(self):
         logging.debug("Closing ParameterSettings window...")
+        keys, vals = [],[]
+        self.params_dict = dict(list(zip(self.entries_dict.keys(),list(map(lambda x:float(x.get()), self.entries_dict.values())))))
+        self.params_save_callback(self.params_dict)
 
 
 class VWinConfigWindow(PopupWindow):
