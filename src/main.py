@@ -242,46 +242,82 @@ class ParameterSettingsWindow(PopupWindow):
 class VWinConfigWindow(PopupWindow):
     def __init__(self, parent, save_callback):
         super().__init__(parent, on_close=self.save)
-        self.parent.geometry('400x350')
+        self.parent.geometry('725x350')
         self.save_callback = save_callback
 
-        self.search_window = tk.Button(self.parent, bg="grey", text="Search \n Window", command=self.search_window)
-        self.reset = tk.Button(self.parent, bg="grey", text="Reset", command=self.reset)
+        self.search_canvas = tk.Canvas(self.parent, bg="grey")
 
-        self.x_start_label = tk.Label(self.parent, bg="grey", text="X Start")
-        self.y_start_label = tk.Label(self.parent, bg="grey", text="Y Start")
-        self.x_end_label = tk.Label(self.parent, bg="grey", text="X End")
-        self.y_end_label = tk.Label(self.parent, bg="grey", text="Y End")
+        self.reset_button        = tk.Button(self.parent, bg="grey", text="Reset", command=self.reset)
+        self.save_button         = tk.Button(self.parent, bg="grey", text="Save\nVWin", command=self.save_as_file)
+        self.load_button         = tk.Button(self.parent, bg="grey", text="Load\nVWin", command=self.load_from_file)
+        self.swap_sliders_button = tk.Button(self.parent, bg="grey", text="Swap\nXY", command=self.swap_sliders)
+        self.swap_axis_button    = tk.Button(self.parent, bg="grey", text="Swap\nAxis", command=self.swap_axis)
 
-        self.x_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
-        self.y_start_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
-        self.x_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
-        self.y_end_slider = tk.Scale(self.parent, from_=-100, to=100, orient=tk.HORIZONTAL, command=self.sliders_updated)
+        self.x_start_label   = tk.Label(self.parent, bg="grey", text="X Start")
+        self.y_start_label   = tk.Label(self.parent, bg="grey", text="Y Start")
+        self.x_end_label     = tk.Label(self.parent, bg="grey", text="X End")
+        self.y_end_label     = tk.Label(self.parent, bg="grey", text="Y End")
+        self.scale_label     = tk.Label(self.parent, bg="grey", text="Scale")
+        self.x_axis_label    = tk.Label(self.parent, bg="grey", text="X Axis")
+        self.y_axis_label    = tk.Label(self.parent, bg="grey", text="Y Axis")
+        self.x_val_label     = tk.Label(self.parent, bg="grey", text="X: 0")
+        self.y_val_label     = tk.Label(self.parent, bg="grey", text="Y: 0")
 
-        self.x_start_entry = tk.Entry(self.parent)
-        self.y_start_entry = tk.Entry(self.parent)
-        self.x_end_entry = tk.Entry(self.parent)
-        self.y_end_entry = tk.Entry(self.parent)
+        self.x_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.y_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.x_end_slider   = tk.Scale(self.parent,   from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.y_end_slider   = tk.Scale(self.parent,   from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.scale_slider   = tk.Scale(self.parent,   from_=1,   to=100, orient=tk.VERTICAL,   command=self.scale_changed)
 
-        self.x_start_label.place(x=9, y=86, width=70, height=32)
-        self.y_start_label.place(x=9, y=139, width=70, height=32)
-        self.x_end_label.place(x=9, y=192, width=70, height=32)
-        self.y_end_label.place(x=9, y=245, width=70, height=32)
+        self.axis_options = ["x", "y", "p1", "p2"]
 
-        self.x_start_slider.place(x=104, y=86, width=185, height=32)
-        self.y_start_slider.place(x=104, y=139, width=185, height=32)
-        self.x_end_slider.place(x=104, y=192, width=185, height=32)
-        self.y_end_slider.place(x=104, y=245, width=185, height=32)
+        self.x_axis = tk.StringVar()
+        self.x_axis.set("x")
+        self.x_axis_dropdown = tk.OptionMenu(self.parent, self.x_axis, *self.axis_options)
 
-        self.x_start_entry.place(x=314, y=86, width=70, height=32)
-        self.y_start_entry.place(x=314, y=139, width=70, height=32)
-        self.x_end_entry.place(x=314, y=192, width=70, height=32)
-        self.y_end_entry.place(x=314, y=245, width=70, height=32)
+        self.y_axis = tk.StringVar()
+        self.y_axis.set("y")
+        self.y_axis_dropdown = tk.OptionMenu(self.parent, self.y_axis, *self.axis_options)
 
-        self.search_window.place(x=9, y=6, width=170, height=60)
-        self.reset.place(x=214, y=6, width=170, height=60)
+        self.scale_entry    = tk.Entry(self.parent)
+        self.x_start_entry  = tk.Entry(self.parent)
+        self.y_start_entry  = tk.Entry(self.parent)
+        self.x_end_entry    = tk.Entry(self.parent)
+        self.y_end_entry    = tk.Entry(self.parent)
 
-        self.exit_button.place(x=9, y=299, width=375, height=45)
+        self.search_canvas .place(x=9, y=15, width=320, height=200)
+
+        self.x_start_label  .place(x=417-25, y=2,   width=40, height=15)
+        self.y_start_label  .place(x=459-20, y=2,   width=40, height=15)
+        self.x_end_label    .place(x=501-15, y=2,   width=40, height=15)
+        self.y_end_label    .place(x=543-10, y=2,   width=40, height=15)
+        self.scale_label    .place(x=369-30, y=2,   width=40, height=15)
+        self.x_axis_label   .place(x=9,      y=228, width=45, height=15)
+        self.y_axis_label   .place(x=9,      y=269, width=45, height=15)
+        self.x_val_label    .place(x=287,    y=228, width=45, height=15)
+        self.y_val_label    .place(x=287,    y=269, width=45, height=15)
+
+        self.scale_slider  .place(x=369-30, y=15, width=40, height=275)
+        self.x_start_slider.place(x=417-25, y=15, width=40, height=275)
+        self.y_start_slider.place(x=459-20, y=15, width=40, height=275)
+        self.x_end_slider  .place(x=501-15, y=15, width=40, height=275)
+        self.y_end_slider  .place(x=543-10, y=15, width=40, height=275)
+
+        self.x_axis_dropdown.place(x=65, y=224, width=214, height=25)
+        self.y_axis_dropdown.place(x=65, y=265, width=214, height=25)
+
+        self.scale_entry  .place(x=369-30, y=299, width=40, height=45)     # weird x values
+        self.x_start_entry.place(x=417-25, y=299, width=40, height=45)     # weird x values
+        self.y_start_entry.place(x=459-20, y=299, width=40, height=45)     # weird x values
+        self.x_end_entry  .place(x=501-15, y=299, width=40, height=45)     # weird x values
+        self.y_end_entry  .place(x=543-10, y=299, width=40, height=45)     # weird x values
+
+        self.reset_button        .place(x=580, y=299, width=140, height=45)
+        self.save_button         .place(x=580, y=15,  width=140, height=45)
+        self.load_button         .place(x=580, y=75,  width=140, height=45)
+        self.swap_sliders_button .place(x=580, y=135, width=140, height=45)
+        self.swap_axis_button    .place(x=580, y=195, width=140, height=45)
+        self.exit_button         .place(x=9,   y=299, width=320, height=45)
 
         logging.debug("VWin Settings window initialised.")
 
@@ -301,6 +337,33 @@ class VWinConfigWindow(PopupWindow):
         self.x_end_entry.insert(tk.END, str(self.x_end_slider.get()))
         self.y_end_entry.insert(tk.END, str(self.y_end_slider.get()))
 
+    def save_as_file(self):
+        pass  # todo: .vwin files
+
+    def load_from_file(self):
+        pass
+
+    def scale_changed(self, *args):
+        pass
+
+    def swap_axis(self):
+        x = self.x_axis.get()
+        y = self.y_axis.get()
+      
+        self.x_axis.set(y)
+        self.y_axis.set(x)
+
+    def swap_sliders(self):
+        xs = float(self.x_start_slider.get())
+        ys = float(self.y_start_slider.get())
+        xe = float(self.x_end_slider.get())
+        ye = float(self.y_end_slider.get())
+
+        self.x_start_slider.set(ys)
+        self.y_start_slider.set(xs)
+        self.x_end_slider  .set(ye)
+        self.y_end_slider  .set(xe)
+    
     def save(self):
         # Needs to pass out all of this
         xs = float(self.x_start_entry.get())
@@ -309,69 +372,12 @@ class VWinConfigWindow(PopupWindow):
         ye = float(self.y_end_entry.get())
         self.save_callback(xs, ys, xe, ye)
 
-    def search_window(self):
-        logging.debug("User pressed button - 'Search Window'")
-        logging.debug("Trying to open new window...")
-        search_window = tk.Toplevel(self.parent)
-        search_app = SearchWindow(search_window)
-
     def reset(self):
         self.x_start_slider.set(0)
         self.y_start_slider.set(0)
         self.x_end_slider.set(0)
         self.y_end_slider.set(0)
         self.sliders_updated()
-
-
-class SearchWindow(PopupWindow):
-    def __init__(self, parent):
-        # idk if im happy with the way scale works atm. maybe do it by mouse clicks?
-        super().__init__(parent)
-        self.parent.geometry('400x350')
-
-        self.search_canvas = tk.Canvas(self.parent, bg="grey")
-
-        self.search_label = tk.Label(self.parent, text="Search Area")
-        self.scale_label = tk.Label(self.parent, text="Scale")
-        self.x_axis_label = tk.Label(self.parent, text="X Axis")
-        self.y_axis_label = tk.Label(self.parent, text="Y Axis")
-        self.x_val_label = tk.Label(self.parent, text="X Val: 0")
-        self.y_val_label = tk.Label(self.parent, text="Y Val: 0")
-
-        self.scale_slider = tk.Scale(self.parent, from_=1, to=10000, orient=tk.VERTICAL, command=self.scale_changed)
-
-        axis_options = ["x", "y", "p1", "p2"]
-        self.x_axis = tk.StringVar()
-        self.x_axis.set("x")
-        self.x_axis_dropdown = tk.OptionMenu(self.parent, self.x_axis, *axis_options)
-
-        axis_options = ["x", "y", "p1", "p2"]
-        self.y_axis = tk.StringVar()
-        self.y_axis.set("y")
-        self.y_axis_dropdown = tk.OptionMenu(self.parent, self.y_axis, *axis_options)
-
-        self.search_canvas.place(x=9, y=15, width=320, height=200)
-
-        self.search_label.place(x=9, y=0, width=100, height=10)
-        self.scale_label.place(x=340, y=0, width=35, height=10)
-        self.x_axis_label.place(x=9, y=228, width=40, height=10)
-        self.y_axis_label.place(x=9, y=269, width=40, height=10)
-        self.x_val_label.place(x=339, y=228, width=60, height=30)
-        self.y_val_label.place(x=339, y=269, width=60, height=30)
-
-        self.scale_slider.place(x=339, y=15, height=200, width=50)
-
-        self.x_axis_dropdown.place(x=59, y=224, width=270, height=25)
-        self.y_axis_dropdown.place(x=59, y=265, width=270, height=25)
-
-        self.exit_button.place(x=9, y=299, height=45, width=375)
-
-    def scale_changed(self, *args):
-        pass
-
-    def mouse_moved_in_canvas(self):
-        self.x_val_label['text'] = 1  # this needs to be changed to use the mouse pointer and scaling
-        self.y_val_label['text'] = 1  # this needs to be changed to use the mouse pointer and scaling
 
 
 def update_needed_settings(f):
