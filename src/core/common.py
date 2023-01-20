@@ -600,7 +600,7 @@ class Settings:
         self.colormap_scale_factor = colormap_scale_factor
 
 
-from tkinter import Canvas
+from tkinter import Canvas, END
 
 
 class Attractor:
@@ -688,3 +688,17 @@ def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height
     stretch_factor = height/colormap_len  # generally should be > 1 and integer but could cause issues
     for i in range(colormap_len+1):
         canvas.create_rectangle(0, i*stretch_factor, width, height, fill=colormap.get_value(i).hex(), outline="")
+
+
+class TextChangeListener(WorkerThread):
+    def __init__(self, text_box, callback):
+        super().__init__()
+        self.text_box, self.callback = text_box, callback
+        self.last_get = self.text_box.get(1.0, END)
+
+    def run(self) -> None:
+        while not self.is_stopped():
+            next_get = self.text_box.get(1.0, END)
+            if self.last_get != next_get:
+                self.callback()
+            self.last_get = next_get

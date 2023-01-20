@@ -3,8 +3,46 @@ import tkinter as tk
 from tkinter import colorchooser as cc
 from tkinter import filedialog as fd
 from tkinter.scrolledtext import ScrolledText
-
 from core.common import *
+
+def updates_settings_frame(f):
+    def wrapper(*args): #talk about writing this algorithm as a wrapper
+        logging.debug("Update needed for a settings frame...")
+        x= f(*args)
+        self = args[0]
+        logging.debug("Destroying previous widgets in actual settings frame....")
+        for widget in self.actual_settings_frame.winfo_children():
+            widget.destroy()
+
+        logging.debug("Instantiating new settings class into the actual settings frame")
+        self.frame_content(self.actual_settings_frame)
+        return x
+    return wrapper # talk about the None error you had from returning this
+
+
+# talk about window design change while coding because it felt off during testing
+def updates_colormap_preview(f):
+    def wrapper(*args):  # talk about writing this algorithm as a wrapper
+        logging.debug("Update needed for a colormap canvas...")
+        x= f(*args)
+        self = args[0]
+        self.update_colormap()
+        try:
+            self.update_button()
+        except:
+            pass  # only needs to execute if there is an update button method, might be a better way to do this?
+        return x
+    return wrapper  # talk about the None error you had from returning this
+
+
+def updates_preview(f):
+    def wrapper(*args):
+        logging.debug("Update needed for a preview canvas...")
+        x = f(*args)
+        self = args[0]
+        self.start_preview_render_thread()
+        return x
+    return wrapper
 
 
 class MainPage(tk.Frame):
@@ -83,7 +121,7 @@ class MainPage(tk.Frame):
             default_overall = "x=x*t\\x\ny=y*t\\y"
 
         self.equation_box.insert(tk.END, default_overall)
-        self.update_colormap_canvas()
+        self.update_colormap()
 
         self.start_pos = [0, 0]
         self.tail_end = 1
@@ -95,27 +133,37 @@ class MainPage(tk.Frame):
         self.attractor = None
         self.preview_render_thread = None
         self.func = None
-        self.camera = None
         self.rendering = False
 
+        self.camera = Camera([-2, 2], [2, -2], self.cam_rotation)
         self.parse_eqs()
         self.vwin_save_callback(-2, -2, 2, 2)
 
-    def update_colormap_canvas(self):
-        t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
+        self.equation_box_change_listener()
+
+    def equation_box_change_listener(self):
+        t = TextChangeListener(self.equation_box, self.parse_eqs)
         t.start()
 
+    def update_colormap(self):
+        t = threading.Thread(target=display_colormap_on_canvas, args=(self.colormap_canvas, self.colormap, 60, 400))
+        t.run()
+        self.start_preview_render_thread()
+
     def start_preview_render_thread(self):
-        self.stop_preview_render_thread()
-        self.parse_eqs()
-        self.preview_render_thread = self.attractor.async_render([400, 400], self.preview_canvas)
-        self.preview_render_thread.start()
+        try:
+            self.stop_preview_render_thread()
+            self.preview_render_thread = self.attractor.async_render([400, 400], self.preview_canvas)
+            self.preview_render_thread.start()
+        except AttributeError:
+            logging.warning("Start render thread called unsafely")
 
     def stop_preview_render_thread(self):
         if self.preview_render_thread is not None:
             self.preview_render_thread.stop()
             del self.preview_render_thread
 
+    @updates_preview
     def parse_eqs(self):
         rawtext = self.equation_box.get("1.0", tk.END)
         self.func = parse_eq(rawtext)
@@ -132,7 +180,9 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Load Colormap'")
         filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"),("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
         logging.debug(f"Absolute filepath opened is {filename}")
-        self.colormap.load(filename)
+        temp_colormap = Colormap(Gradient([]))
+        temp_colormap.load(filename)
+        self.set_colormap(temp_colormap)
 
     def edit_colormap(self):
         logging.debug("User pressed button - 'Edit Colormap'")
@@ -140,16 +190,22 @@ class MainPage(tk.Frame):
         colormap_editor_window = tk.Toplevel(self.parent)
         colormap_editor_app = ColormapEditor(colormap_editor_window, self.colormap, self.set_colormap)
 
+    @updates_colormap_preview
     def reset_colormap(self):
         logging.debug("User pressed button - 'Reset Colormap'")
-        loaded = self.colormap.load(getcwd() + "/defaults/default.colormap")
+        temp_colormap = Colormap(Gradient([]))
+        loaded = temp_colormap.load(getcwd() + "/defaults/default.colormap")
         if not loaded:
             logging.error("Default colormap could not be loaded - reset failed.")
-        self.update_colormap_canvas()
+        else:
+            self.set_colormap(temp_colormap)
 
+    @updates_preview
     def vwin_save_callback(self, xs, ys, xe, ye):
         self.vwin_params = xs, ys, xe, ye
         self.camera = Camera([xs, ye], [xe, ys], self.cam_rotation)
+        del self.attractor
+        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
@@ -167,20 +223,23 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Save Project'")
         filename = fd.asksaveasfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
         logging.debug(f"Absolute save path is {filename}")
-        self.x=1
+        self.x = 1
 
+    @updates_colormap_preview
     def load_project(self):
         logging.debug("User pressed button - 'Load Project'")
         filename = fd.askopenfilename(filetypes=[("Project File", "*.proj"),("Raw Text Project", "*.txt")], defaultextension=".proj")
         logging.debug(f"Absolute filepath opened is {filename}")
         self.x = 1
 
+    @updates_preview
     def settings(self):
         logging.debug("User pressed button - 'Settings'")
         logging.debug("Trying to open new window...")
         settings_window = tk.Toplevel(self.parent)
         settings_app = SettingsWindow(settings_window)
 
+    @updates_preview
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
         logging.debug("Trying to open new window...")
@@ -190,8 +249,8 @@ class MainPage(tk.Frame):
     def render(self):
         logging.debug("User pressed button - 'Render'")
         self.x = 1
+        self.parse_eqs()
         #temp to test previous
-        self.start_preview_render_thread()
         # self.attractor.render(self.settings.resolution, self.settings.extension)
 
     @staticmethod
@@ -199,12 +258,15 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Video mode settings'")
         logging.error("Not yet implemented")
 
+    @updates_colormap_preview
     def set_colormap(self, colormap: Colormap):
         self.colormap = colormap
-        self.update_colormap_canvas()
+        self.settings.colormap = colormap
+        del self.attractor
+        self.attractor = Attractor([Emitter(self.func, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
 
-#talk about using this parent class in design
+# talk about using this parent class in design
 class PopupWindow:
     def __init__(self, parent, on_close=None):
         self.parent = parent
@@ -380,21 +442,6 @@ class VWinConfigWindow(PopupWindow):
         self.sliders_updated()
 
 
-def update_needed_settings(f):
-    def wrapper(*args): #talk about writing this algorithm as a wrapper
-        logging.debug("Update needed for a settings frame...")
-        x= f(*args)
-        self = args[0]
-        logging.debug("Destroying previous widgets in actual settings frame....")
-        for widget in self.actual_settings_frame.winfo_children():
-            widget.destroy()
-
-        logging.debug("Instantiating new settings class into the actual settings frame")
-        self.frame_content(self.actual_settings_frame)
-        return x
-    return wrapper # talk about the None error you had from returning this
-
-
 class SettingsWindow(PopupWindow):
     def __init__(self, parent):
         super().__init__(parent)
@@ -411,32 +458,32 @@ class SettingsWindow(PopupWindow):
         self.frame_content = GeneralSettings
         self.frame_content(self.actual_settings_frame)
 
-    @update_needed_settings
+    @updates_settings_frame
     def general(self):
         logging.debug("User opened general tab of settings")
         self.frame_content = GeneralSettings
 
-    @update_needed_settings
+    @updates_settings_frame
     def rendering(self):
         logging.debug("User opened general tab of settings")
         self.frame_content = RenderingSettings
 
-    @update_needed_settings
+    @updates_settings_frame
     def files(self):
         logging.debug("User opened files tab of settings")
         self.frame_content = FilesSettings
 
-    @update_needed_settings
+    @updates_settings_frame
     def color(self):
         logging.debug("User opened color tab of settings")
         self.frame_content = ColorSettings
 
-    @update_needed_settings
+    @updates_settings_frame
     def ui(self):
         logging.debug("User opened ui tab of settings")
         self.frame_content = UISettings
 
-    @update_needed_settings
+    @updates_settings_frame
     def maths(self):
         logging.debug("User opened maths tab of settings")
         self.frame_content = MathsSettings
@@ -513,18 +560,6 @@ class SettingsBar:
         self.placeholder.place(x=13, y=118, width=95, height=265)
 
 
-# talk about window design change while coding because it felt off during testing
-def updated_needed_colormap(f):
-    def wrapper(*args): #talk about writing this algorithm as a wrapper
-        logging.debug("Update needed for a colormap window...")
-        x= f(*args)
-        self = args[0]
-        self.update_colormap()
-        self.update_button()
-        return x
-    return wrapper  # talk about the None error you had from returning this
-
-
 class ColormapEditor(PopupWindow):
     def __init__(self, parent, colormap: Colormap, save_callback: Callable):
         super().__init__(parent, on_close=self.save_and_close)
@@ -583,13 +618,13 @@ class ColormapEditor(PopupWindow):
     def color(self):
         pass  # why?
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def insert(self):  # required new method
         output = cc.askcolor()[0]
         color = Color(*output, 255)
         self.colormap.insert_value(color, int(self.position_slider.get()))
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def delete(self):
         currentpos = self.position_slider.get()
         poslist = list(map(lambda x: x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
@@ -598,7 +633,7 @@ class ColormapEditor(PopupWindow):
             x.pop(poslist.index(currentpos))
             self.colormap = Colormap(Gradient(x))
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def jump_next(self):
         currentpos = self.position_slider.get()
         poslist = list(map(lambda x:x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
@@ -607,11 +642,11 @@ class ColormapEditor(PopupWindow):
                 self.position_slider.set(poslist[index])
                 return
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def invert(self):  # need a new method
         self.colormap.invert()
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def jump_prev(self):
         currentpos = self.position_slider.get()
         poslist = list(map(lambda x: x[1], self.colormap.get_gradient().__getattribute__("_color_peaks")))
@@ -626,7 +661,7 @@ class ColormapEditor(PopupWindow):
                     self.position_slider.set(poslist[index - 1])
                 return
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def adjoin(self):
         logging.debug("User pressed button - 'Load Colormap'")
         filename = fd.askopenfilename(filetypes=[("Colormap File", "*.colormap"), ("Raw Text Colormap", "*.txt")], defaultextension=".cmp")
@@ -636,12 +671,12 @@ class ColormapEditor(PopupWindow):
         self.colormap += other_cmp
         self.colormap *= 100/len(self.colormap)
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def double(self):  # warraneted loads of common updates, added __stuff__ and had to change add logic to add the +1
         self.colormap = self.colormap + self.colormap
         self.colormap = self.colormap*0.5
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def jump_first(self):
         self.position_slider.set(self.colormap.get_gradient().__getattribute__("_color_peaks")[0][1])     # protected access could be an issue
 
@@ -657,11 +692,11 @@ class ColormapEditor(PopupWindow):
         logging.debug(f"Absolute filepath opened is {filename}")
         self.colormap.load(filename)
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def jump_last(self):
         self.position_slider.set(self.colormap.get_gradient().__getattribute__("_color_peaks")[-1][1])
 
-    @updated_needed_colormap
+    @updates_colormap_preview
     def reverse(self):  # needed a new method
         self.colormap = reversed(self.colormap)
 
