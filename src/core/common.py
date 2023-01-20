@@ -484,21 +484,6 @@ class Point:
         self._pos = [x*y for x, y in zip(self.get_pos(), scalars)]
 
 
-class Image:
-    """
-    Class for an output image
-    """
-    def __init__(self, pixels: list[list[Point]], extension: str) -> None:                       #Extension object?
-        self.pixels, self.extension = pixels, extension
-
-    def write(self, path: str) -> bool:
-        """
-        Writes the image to a path
-        """
-        logging.critical("Not yet implemented method write of Image.")
-        return "not implemented", path
-
-
 class Camera:
     """
     Class that manages camera transforms
@@ -565,9 +550,16 @@ class Settings:
     def __init__(self, colormap, colormap_scale_factor = 100):
         self.colormap = colormap
         self.colormap_scale_factor = colormap_scale_factor
+        self.resolution = [4096, 4096]  # hardcoded defaults
+        self.extension = "PNG"
+        self.save_directory = getcwd() + "/user_files/"
+        self.iters = 1_000_000
+        self.blend_mode = "add"
 
 
 from tkinter import Canvas, END
+from PIL import Image
+from itertools import groupby
 
 
 class Attractor:
@@ -622,12 +614,32 @@ class Attractor:
         thread = RenderThread(self.timestep, self.colormap, self._camera, canvas, resolution)
         return thread
 
-    def render(self, resolution: list[int], extension: str) -> Image:
+    def render(self, resolution: list[int], extension: str, progress_bar, destroy) -> Image:
         """
         Render self.
         """
-        _ = resolution, extension
-        return self._camera.transform_space(self._points) #todo: this
+        renderer = Renderer(resolution, self.timestep, None, self.colormap, self._camera)
+        points = []
+        x = self._settings.iters
+        for i in range(x-1):
+            progress_bar.step(1)
+            points.append(next(renderer))
+
+        img = Image.new('RGBA', (resolution[0], resolution[1]), color=(0,0,0,255))
+        points = list(filter(lambda x:x is not None , points))
+        if self._settings.blend_mode == "add":
+            newpoints = []
+            for coord, colors in groupby(points, lambda x: [x[0],x[1]]):
+                colors = [x[2] for x in list(colors)]
+                newpoints.append([coord[0], coord[1], sum(colors[1:], start=colors[0])])  # NOTE: sum(B) is actually 0+B[0]+B[1] ... B[len(B)]. That's so stupid. - Ace
+            points = newpoints
+        for point in points:
+            x, y, c = point
+            img.putpixel((x, y), (c.red, c.green, c.blue, c.alpha))
+        img.save(self._settings.save_directory+"image_test."+self._settings.extension.lower())
+
+        destroy()
+        return img
 
 
 class Renderer:
@@ -640,6 +652,20 @@ class Renderer:
         self.time = 0
 
     def __next__(self):
+        if self.canvas is None:
+            return self.next_inner()
+        else:
+            return self.next_inner_canvas()
+
+    def next_inner(self):
+        self.time += 1
+        if self.time > len(self.colormap):
+            self.time = 0
+        for point in self.camera.scale_to_resolution(self.timestep(), self.resolution):
+            x, y = point.get_pos()
+            return floor(x), floor(y), point.get_color()
+
+    def next_inner_canvas(self):
         self.time += 1
         if self.time > len(self.colormap):
             self.time = 0
@@ -647,7 +673,6 @@ class Renderer:
             x, y = point.get_pos()
             hex_color = point.get_color().hex()
             self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
-
 
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
     colormap_len = len(colormap)

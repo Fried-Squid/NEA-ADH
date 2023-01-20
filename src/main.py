@@ -273,7 +273,9 @@ class MainPage(tk.Frame):
         self.x = 1
         self.parse_eqs()
         # temp to test previous
-        # self.attractor.render(self.settings.resolution, self.settings.extension)
+        progress_bar_window = tk.Toplevel(self.parent)
+        progress_bar_app = RenderBar(progress_bar_window, self.attractor)
+        progress_bar_app.start()
 
     @staticmethod
     def video(self):
@@ -302,6 +304,32 @@ class PopupWindow:
         if self.on_close is not None:
             self.on_close(*args, **kwargs) #talk about arg passing in design
 
+        self.parent.destroy()
+
+
+from tkinter import ttk
+
+
+class RenderBar:
+    def __init__(self, parent, attractor):
+        self.parent = parent
+        self.parent.resizable(False, False)
+        self.frame = tk.Frame(self.parent)
+        self.parent.geometry("200x50")
+        self.attractor = attractor
+        self.settings = self.attractor._settings
+
+        self.progress_bar = ttk.Progressbar(self.parent, length=180, max=self.attractor._settings.iters)
+        self.label = tk.Label(self.parent, text="Rendering...")
+
+        self.progress_bar.place(x=10,y=10)
+        self.label.place(x=10,y=25, width=180, height=20)
+
+    def start(self):
+        t = threading.Thread(target = self.attractor.render, args = (self.settings.resolution, self.settings.extension, self.progress_bar, self.destroy))
+        t.start()
+
+    def destroy(self):
         self.parent.destroy()
 
 
