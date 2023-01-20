@@ -13,6 +13,38 @@ from datetime import datetime
 # pylint: disable=invalid-name
 
 
+def dict_join(x: dict, y: dict) -> dict:
+    """
+    Joins two dicts
+    """
+    return dict(zip(list(x.keys())+list(y.keys()), list(x.values())+list(y.values()))) #  i wrote this with a migraine
+
+
+def get_params(rawtext):
+    """
+    Returns a dict_keys object containing  parameter names as strings
+    """
+    loc = {"x":1,"y":1,"t":0,"dx":None,"dy":None}
+    glo = {}
+    exec("from math import*", glo, loc)
+    params = {}
+
+    for line in filter(lambda x:x!="", rawtext.split("\n")):
+        def process_line(loc, params):
+            x=dict_join(params, loc)
+            try:
+                exec(line, glo, x)
+            except NameError as e:
+                new_param = str(e).split("'")[1]
+                params = dict_join(params, {new_param: 1})
+                return process_line(x, params)
+            except Exception as e:
+                logging.error(f"Internal Error - {e}")
+            return x, params
+        loc, params = process_line(loc, params)
+    return params.keys()
+
+
 def initialise_logger(debug: bool):
     """
     Initialises the logger
@@ -114,88 +146,21 @@ def structure_check(dir: str):
     logging.info("StructureCheck Complete.")
 
 
-def parse_eq(text: str) -> Callable: #this block hasnt been tested at all yet 09:51 12/01/23
-    """
-    Converts a stringed expression to a callable. params just start with %
-    """
-    error_y, error_x = False, False
-    logging.debug("Parsing new equation...")
-    if "x=" in text:
-        start_x = text.find("x=")
-        end_x = text.find(r"\\x")
-        expression_x = text[start_x:end_x]
-        loc={"x":1,"y":1,"t":2}
-        logging.debug(f"X Expression was found - [{expression_x}]")
-        try:
-            exec("from math import *;"+expression_x,{},loc)  #pylint: disable = exec-used
-            logging.debug("Expression appears to be error-free.")
-        except Exception as e:
-            logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_x.txt")
-            logging.debug(f"Internal error - {e}")
-            error_x = True
-    if "x=" not in text or error_x:
-        if "x=" not in text:
-            logging.warning("No X equation found - defaulting to defaults/default_eq_x.txt")
-        logging.info("Attempting to load from default file...")
-        try:
-            default = open("defaults/default_eq_x.txt","r",encoding="utf-8")
-            expression_x = default.readlines[0]
-            logging.info(f"Loading from default was successful. Loaded string is [{expression_x}]")
-        except Exception as e:
-            logging.error("Unable to load default equation - hardcoded fallback [x=xt] now in place.")
-            logging.error(f"Internal error - {e}")
-            expression_x = "x=x*t"
-    
-    if "y=" in text:
-        start_y = text.find("y=")
-        end_y = text.find(r"\\y")
-        expression_y = text[start_y:end_y]
-        loc={"x":1,"y":1,"t":2}
-        logging.debug(f"Y Expression was found - [{expression_y}]")
-        try:
-            exec("from math import *;"+expression_y,{},loc)  #pylint: disable=exec-used
-            logging.debug("Expression appears to be error-free.")
-        except Exception as e:
-            logging.warning("Given expression errors, setting error flag to HIGH and falling back to defaults/default_eq_y.txt")
-            logging.debug(f"Internal error - {e}")
-            error_y = True
+def parse_eq(rawtext):
+    params = get_params(rawtext)
 
-    if "y=" not in text or error_y:
-        if "y=" not in text:
-            logging.warning("No Y equation found - defaulting to defaults/default_eq_y.txt")
-        logging.info("Attempting to load from default file...")
-        try:
-            default = open("defaults/default_eq_y.txt","r",encoding="utf-8")
-            expression_y = default.readlines[0]
-            logging.info(f"Loading from default was successful. Loaded string is [{expression_y}]")
-        except Exception as e:
-            logging.error("Unable to load default equation - hardcoded fallback [y=yt] now in place.")
-            logging.error(f"Internal error - {e}")
-            expression_y = "y=y*t"
-    
-    def x_func(x, y, t):
-        loc={"x":x,"y":y,"t":t}
-        try:
-            exec("from math import *;"+expression_x, {}, loc)  #pylint: disable=exec-used
-        except Exception as e:
-            logging.error(f"X function raised an error - {e} ")
-            logging.critical("Program unsure how to continue. Exiting with code 1...")
-            exit(1)
-        return loc["x"]
+    def gen_params(**kwargs):
+        return dict(kwargs)
 
-    def y_func(x, y, t):
-        loc={"x":x,"y":y,"t":t}
-        try:
-            exec("from math import *;"+expression_y, {}, loc)  #pylint: disable=exec-used
-        except Exception as e:
-            logging.error(f"X function raised an error - {e} ")
-            logging.critical("Program unsure how to continue. Exting with code 1...")
-            exit(1)
-        return loc["y"]
+    def func(**kwargs):
+        glo = {}
+        loc = gen_params(**kwargs)
+        exec("from math import*", glo, loc)
+        exec(rawtext, glo, loc)
 
-    tuple_func = lambda a, t: (x_func(a[0], a[1], t), y_func(a[0], a[1], t))
+        return loc["dx"], loc["dy"]
 
-    return tuple_func
+    return params, func
 
 
 def _edit(inner: Callable) -> Callable:
@@ -576,8 +541,9 @@ class Emitter:
     """
     Where the magic happens
     """
-    def __init__(self, func: Callable, pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
+    def __init__(self, func: Callable, params: dict, pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
         self._func, self._pos, self._tail_end = func, pos, tail_end
+        self._params = params
         self._time = time_offset
 
         logging.debug(f"New Emitter object instantiated at {hex(id(self))}")
@@ -586,7 +552,8 @@ class Emitter:
         """
         Generate a new point
         """
-        self._pos = self._func(self._pos, self._time)
+        x, y, t = list(self._pos) + [self._time]
+        self._pos = self._func(x=x, y=y, t=t, **self._params)
         self._time += 1
         return self._pos[:], self._time, (self._time >= self._tail_end)
 
