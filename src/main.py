@@ -119,7 +119,7 @@ class MainPage(tk.Frame):
         self.equation_box.insert(tk.END, default_text)
         self.update_colormap()
 
-        self.start_pos = [1, 1]
+        self.start_pos = [0.1, 0.1]
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)

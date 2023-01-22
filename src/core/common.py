@@ -478,7 +478,9 @@ class Point:
         """
         Translates a point by a vector
         """
-        self._pos = [x+y for x, y in zip(self.get_pos(), vector)]
+        vx,vy = vector
+        px,py = self._pos
+        self._pos = [px+vx, py+vy]
 
     def scale_by_dims(self, scalars: list[float]):
         self._pos = [x*y for x, y in zip(self.get_pos(), scalars)]
@@ -519,6 +521,7 @@ class Camera:
         [x.translate(translate) for x in plane]
         [x.scale_by_dims([res[0]/(max_x-min_y), res[1]/(max_y-min_y)]) for x in plane]  # scales it to the resolution
 
+
         return plane
 
 
@@ -537,7 +540,8 @@ class Emitter:
         """
         Generate a new point
         """
-        x, y, t = list(self._pos) + [self._time]
+        x, y = list(self._pos)
+        t = self._time
         self._pos = self._func(x=x, y=y, t=t, **self._params)
         self._time += 1
         return self._pos[:], self._time, (self._time >= self._tail_end)
@@ -550,7 +554,7 @@ class Settings:
     def __init__(self, colormap, colormap_scale_factor = 100):
         self.colormap = colormap
         self.colormap_scale_factor = colormap_scale_factor
-        self.resolution = [4096, 4096]  # hardcoded defaults
+        self.resolution = [4096 , 4096]  # hardcoded defaults
         self.extension = "PNG"
         self.save_directory = getcwd() + "/user_files/"
         self.iters = 1_000_000
@@ -622,11 +626,12 @@ class Attractor:
         points = []
         x = self._settings.iters
         for i in range(x-1):
-            progress_bar.step(1)
+            if i % 100 == 0:
+                progress_bar.step(100)
             points.append(next(renderer))
 
         img = Image.new('RGBA', (resolution[0], resolution[1]), color=(0,0,0,255))
-        points = list(filter(lambda x:x is not None , points))
+        points = list(filter(lambda x: x is not None, points))
         if self._settings.blend_mode == "add":
             newpoints = []
             for coord, colors in groupby(points, lambda x: [x[0],x[1]]):
@@ -650,17 +655,16 @@ class Renderer:
         self.timestep = timestep_callback
         self.camera = camera
         self.time = 0
+        if self.canvas is None:
+            self.inner = self.next_inner_img
+        else:
+            self.inner = self.next_inner_canvas
 
     def __next__(self):
-        if self.canvas is None:
-            return self.next_inner()
-        else:
-            return self.next_inner_canvas()
+        return self.inner()
 
-    def next_inner(self):
+    def next_inner_img(self):
         self.time += 1
-        if self.time > len(self.colormap):
-            self.time = 0
         for point in self.camera.scale_to_resolution(self.timestep(), self.resolution):
             x, y = point.get_pos()
             return floor(x), floor(y), point.get_color()
