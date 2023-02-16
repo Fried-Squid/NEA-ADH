@@ -554,7 +554,7 @@ class Settings:
     def __init__(self, colormap, colormap_scale_factor = 100):
         self.colormap = colormap
         self.colormap_scale_factor = colormap_scale_factor
-        self.resolution = [4096 , 4096]  # hardcoded defaults
+        self.resolution = [4096, 4096]  # hardcoded defaults
         self.extension = "PNG"
         self.save_directory = getcwd() + "/user_files/"
         self.iters = 1_000_000

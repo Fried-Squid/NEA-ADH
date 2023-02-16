@@ -60,25 +60,25 @@ class MainPage(tk.Frame):
             exit(126)
 
         self.preview_canvas = tk.Canvas(self.parent, bg="white")
-        self.colormap_canvas = tk.Canvas(self.parent, bg="grey")
+        self.colormap_canvas = tk.Canvas(self.parent)
 
         self.preview_label = tk.Label(self.parent, text="Preview Window")
 
         self.equation_box = ScrolledText(self.parent)
 
-        self.save_colormap_button  = tk.Button(self.parent, bg="grey", command=self.save_colormap,  text="""Save\nColormap""")
-        self.load_colormap_button  = tk.Button(self.parent, bg="grey", command=self.load_colormap,  text="""Load\nColormap""")
-        self.edit_colormap_button  = tk.Button(self.parent, bg="grey", command=self.edit_colormap,  text="""Edit\nColormap""")
-        self.reset_colormap_button = tk.Button(self.parent, bg="grey", command=self.reset_colormap, text="""Reset\nColormap""")
-        self.edit_vwindow_button   = tk.Button(self.parent, bg="grey", command=self.edit_vwin,      text="""Edit\nV-Window""")
-        self.supersampling_button  = tk.Button(self.parent, bg="grey", command=self.supersampling,  text="""Supersampling\nsettings""")
-        self.save_project_button   = tk.Button(self.parent, bg="grey", command=self.save_project,   text="""Save\nproject""")
-        self.load_project_button   = tk.Button(self.parent, bg="grey", command=self.load_project,   text="""Load\nproject""")
-        self.settings_button       = tk.Button(self.parent, bg="grey", command=self.settings,       text="""Settings &\nPreferences""")
-        self.parameter_button     = tk.Button(self.parent, bg="grey", command=self.parameters,      text="""Parameter\nConfig""")
+        self.save_colormap_button  = tk.Button(self.parent, command=self.save_colormap,  text="""Save\nColormap""")
+        self.load_colormap_button  = tk.Button(self.parent, command=self.load_colormap,  text="""Load\nColormap""")
+        self.edit_colormap_button  = tk.Button(self.parent, command=self.edit_colormap,  text="""Edit\nColormap""")
+        self.reset_colormap_button = tk.Button(self.parent, command=self.reset_colormap, text="""Reset\nColormap""")
+        self.edit_vwindow_button   = tk.Button(self.parent, command=self.edit_vwin,      text="""Edit\nV-Window""")
+        self.supersampling_button  = tk.Button(self.parent, command=self.supersampling,  text="""Supersampling\nsettings""")
+        self.save_project_button   = tk.Button(self.parent, command=self.save_project,   text="""Save\nproject""")
+        self.load_project_button   = tk.Button(self.parent, command=self.load_project,   text="""Load\nproject""")
+        self.settings_button       = tk.Button(self.parent, command=self.settings,       text="""Settings &\nPreferences""")
+        self.parameter_button     = tk.Button(self.parent, command=self.parameters,      text="""Parameter\nConfig""")
 
-        self.render_button = tk.Button(self.parent, bg="grey", command=self.render, text="Render Project")
-        self.video_button  = tk.Button(self.parent, bg="grey", command=self.video,  text="Video mode settings")
+        self.render_button = tk.Button(self.parent, command=self.render, text="Render Project")
+        self.video_button  = tk.Button(self.parent, command=self.video,  text="Video mode settings")
 
         self.preview_canvas.place(x=8, y=15, height=400, width=400)
         self.colormap_canvas.place(x=428, y=15, height=400, width=60)
@@ -298,7 +298,7 @@ class PopupWindow:
         self.frame = tk.Frame(self.parent)
         self.on_close = on_close
 
-        self.exit_button = tk.Button(self.parent, bg="grey", text="Save and exit", command=self.exit_window)
+        self.exit_button = tk.Button(self.parent, text="Save and exit", command=self.exit_window)
 
     def exit_window(self, *args, **kwargs):
         if self.on_close is not None:
@@ -403,23 +403,23 @@ class VWinConfigWindow(PopupWindow):
         self.parent.geometry('725x350')
         self.save_callback = save_callback
 
-        self.search_canvas = tk.Canvas(self.parent, bg="grey")
+        self.search_canvas = tk.Canvas(self.parent)
 
-        self.reset_button        = tk.Button(self.parent, bg="grey", text="Reset", command=self.reset)
-        self.save_button         = tk.Button(self.parent, bg="grey", text="Save\nVWin", command=self.save_as_file)
-        self.load_button         = tk.Button(self.parent, bg="grey", text="Load\nVWin", command=self.load_from_file)
-        self.swap_sliders_button = tk.Button(self.parent, bg="grey", text="Swap\nXY", command=self.swap_sliders)
-        self.swap_axis_button    = tk.Button(self.parent, bg="grey", text="Swap\nAxis", command=self.swap_axis)
+        self.reset_button        = tk.Button(self.parent, text="Reset", command=self.reset)
+        self.save_button         = tk.Button(self.parent, text="Save\nVWin", command=self.save_as_file)
+        self.load_button         = tk.Button(self.parent, text="Load\nVWin", command=self.load_from_file)
+        self.swap_sliders_button = tk.Button(self.parent, text="Swap\nXY", command=self.swap_sliders)
+        self.swap_axis_button    = tk.Button(self.parent, text="Swap\nAxis", command=self.swap_axis)
 
-        self.x_start_label   = tk.Label(self.parent, bg="grey", text="X Start")
-        self.y_start_label   = tk.Label(self.parent, bg="grey", text="Y Start")
-        self.x_end_label     = tk.Label(self.parent, bg="grey", text="X End")
-        self.y_end_label     = tk.Label(self.parent, bg="grey", text="Y End")
-        self.scale_label     = tk.Label(self.parent, bg="grey", text="Scale")
-        self.x_axis_label    = tk.Label(self.parent, bg="grey", text="X Axis")
-        self.y_axis_label    = tk.Label(self.parent, bg="grey", text="Y Axis")
-        self.x_val_label     = tk.Label(self.parent, bg="grey", text="X: 0")
-        self.y_val_label     = tk.Label(self.parent, bg="grey", text="Y: 0")
+        self.x_start_label   = tk.Label(self.parent, text="X Start")
+        self.y_start_label   = tk.Label(self.parent, text="Y Start")
+        self.x_end_label     = tk.Label(self.parent, text="X End")
+        self.y_end_label     = tk.Label(self.parent, text="Y End")
+        self.scale_label     = tk.Label(self.parent, text="Scale")
+        self.x_axis_label    = tk.Label(self.parent, text="X Axis")
+        self.y_axis_label    = tk.Label(self.parent, text="Y Axis")
+        self.x_val_label     = tk.Label(self.parent, text="X: 0")
+        self.y_val_label     = tk.Label(self.parent, text="Y: 0")
 
         self.x_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
         self.y_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
@@ -547,7 +547,7 @@ class SettingsWindow(PopupWindow):
         self.settings_bar = SettingsBar(parent, self.bar_callbacks)
         self.exit_button.place(x=25, y=395, width=700, height=45)
 
-        self.actual_settings_frame = tk.Frame(self.parent, bg="grey")
+        self.actual_settings_frame = tk.Frame(self.parent)
         self.actual_settings_frame.place(x=122, y=12, width=616, height=370)
 
         logging.debug("Trying to render default (general) settings frame...") #talk about these algos in design
@@ -637,14 +637,14 @@ class SettingsBar:
         self.parent = parent
         self.callbacks = callbacks
 
-        self.general_button = tk.Button(self.parent, bg="grey", command=self.callbacks[0], text="Genera")
-        self.rendering_button = tk.Button(self.parent, bg="grey", command=self.callbacks[1], text="Rendering")
-        self.files_button = tk.Button(self.parent, bg="grey", command=self.callbacks[2], text="Files")
-        self.color_button = tk.Button(self.parent, bg="grey", command=self.callbacks[3], text="Color")
-        self.ui_button = tk.Button(self.parent, bg="grey", command=self.callbacks[4], text="UI")
-        self.maths_button = tk.Button(self.parent, bg="grey", command=self.callbacks[5], text="Maths")
-        self.update_button = tk.Button(self.parent, bg="grey", command=self.callbacks[6], text="Update")
-        self.placeholder = tk.Label(self.parent, bg="grey")
+        self.general_button = tk.Button(self.parent, command=self.callbacks[0], text="Genera")
+        self.rendering_button = tk.Button(self.parent, command=self.callbacks[1], text="Rendering")
+        self.files_button = tk.Button(self.parent, command=self.callbacks[2], text="Files")
+        self.color_button = tk.Button(self.parent, command=self.callbacks[3], text="Color")
+        self.ui_button = tk.Button(self.parent, command=self.callbacks[4], text="UI")
+        self.maths_button = tk.Button(self.parent, command=self.callbacks[5], text="Maths")
+        self.update_button = tk.Button(self.parent, command=self.callbacks[6], text="Update")
+        self.placeholder = tk.Label(self.parent)
 
         self.general_button.place(x=13, y=12, width=95, height=15)
         self.rendering_button.place(x=13, y=27, width=95, height=15)
@@ -669,18 +669,18 @@ class ColormapEditor(PopupWindow):
         self.position_slider = tk.Scale(self.parent, from_=0, to=100, orient=tk.VERTICAL, command=self.update_button)
 
         self.color_button      = tk.Button(self.parent, bg=self.colormap.get_value(int(self.position_slider.get())).hex())  # this required updating common:color, write about
-        self.insert_button     = tk.Button(self.parent, bg="grey", text="Insert new\ncolor",             command=self.insert)
-        self.delete_button     = tk.Button(self.parent, bg="grey", text="Delete color\nat position",     command=self.delete)
-        self.jump_next_button  = tk.Button(self.parent, bg="grey", text="Jump to\nnext color",           command=self.jump_next)
-        self.reverse_button    = tk.Button(self.parent, bg="grey", text="Reverse\nColormap",             command=self.reverse)
-        self.invert_button     = tk.Button(self.parent, bg="grey", text="Invert\nColors",                command=self.invert)
-        self.jump_prev_button  = tk.Button(self.parent, bg="grey", text="Jump to\nprevious color",       command=self.jump_prev)
-        self.adjoin_button     = tk.Button(self.parent, bg="grey", text="Adjoin Colormap\nfrom file",    command=self.adjoin)
-        self.double_button     = tk.Button(self.parent, bg="grey", text="Compress and\ndouble colormap", command=self.double)
-        self.jump_first_button = tk.Button(self.parent, bg="grey", text="Jump to\nfirst color",          command=self.jump_first)
-        self.save_button       = tk.Button(self.parent, bg="grey", text="Save\nColormap",                command=self.save)
-        self.load_button       = tk.Button(self.parent, bg="grey", text="Load New\nColormap",            command=self.load)
-        self.jump_last_button  = tk.Button(self.parent, bg="grey", text="Jump to\nlast color",           command=self.jump_last)
+        self.insert_button     = tk.Button(self.parent, text="Insert new\ncolor",             command=self.insert)
+        self.delete_button     = tk.Button(self.parent, text="Delete color\nat position",     command=self.delete)
+        self.jump_next_button  = tk.Button(self.parent, text="Jump to\nnext color",           command=self.jump_next)
+        self.reverse_button    = tk.Button(self.parent, text="Reverse\nColormap",             command=self.reverse)
+        self.invert_button     = tk.Button(self.parent, text="Invert\nColors",                command=self.invert)
+        self.jump_prev_button  = tk.Button(self.parent, text="Jump to\nprevious color",       command=self.jump_prev)
+        self.adjoin_button     = tk.Button(self.parent, text="Adjoin Colormap\nfrom file",    command=self.adjoin)
+        self.double_button     = tk.Button(self.parent, text="Compress and\ndouble colormap", command=self.double)
+        self.jump_first_button = tk.Button(self.parent, text="Jump to\nfirst color",          command=self.jump_first)
+        self.save_button       = tk.Button(self.parent, text="Save\nColormap",                command=self.save)
+        self.load_button       = tk.Button(self.parent, text="Load New\nColormap",            command=self.load)
+        self.jump_last_button  = tk.Button(self.parent, text="Jump to\nlast color",           command=self.jump_last)
 
         self.colormap_canvas.place(x=12, y=12, width=60, height=380)
 
@@ -809,9 +809,9 @@ class SupersamplingWindow(PopupWindow):
         self.attractor = attractor
         self.enabled = 1  # self.attractor.supersampling_enabled
 
-        self.algo_label     = tk.Label(self.parent, bg="grey", text="Sampling\nAlgorithm")
-        self.x_res_label    = tk.Label(self.parent, bg="grey", text="X\nRes")
-        self.y_res_label    = tk.Label(self.parent, bg="grey", text="Y\nRes")
+        self.algo_label     = tk.Label(self.parent, text="Sampling\nAlgorithm")
+        self.x_res_label    = tk.Label(self.parent, text="X\nRes")
+        self.y_res_label    = tk.Label(self.parent, text="Y\nRes")
 
         self.x_res_slider   = tk.Scale(self.parent, orient=tk.HORIZONTAL, from_=128, to=4096)
         self.y_res_slider   = tk.Scale(self.parent, orient=tk.HORIZONTAL, from_=128, to=4096)
@@ -823,8 +823,8 @@ class SupersamplingWindow(PopupWindow):
         self.algo.set("Poisson-disc")
         self.algo_dropdown = tk.OptionMenu(self.parent, self.algo, *algo_options)
 
-        self.enable_button  = tk.Button(self.parent, bg="grey", text="Enable Supersampling", command=self.enable)
-        self.reset_button   = tk.Button(self.parent, bg="grey", text="Reset to default", command=self.reset)
+        self.enable_button  = tk.Button(self.parent, text="Enable Supersampling", command=self.enable)
+        self.reset_button   = tk.Button(self.parent, text="Reset to default", command=self.reset)
 
         self.algo_label    .place(x=12, y=20, width=58, height=32)
         self.x_res_label   .place(x=12, y=66, width=58, height=32)
