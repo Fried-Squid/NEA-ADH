@@ -9,29 +9,45 @@ import logging
 from sys import exit
 from datetime import datetime
 
+
 # pylint: disable=logging-fstring-interpolation
 # pylint: disable=invalid-name
+
+def load_user_func():
+    try:
+        import sys, importlib
+        sys.path.append(os.path.normpath(os.getcwd() + os.sep + os.pardir) + "/src/cache/")
+        import user_func
+        importlib.reload(user_func)
+        def func(*args, **kwargs):
+            return user_func.user_defined_func(*args, **kwargs)
+        return func
+    except Exception as e:
+        logging.error(e)
+        return None
+
 
 
 def dict_join(x: dict, y: dict) -> dict:
     """
     Joins two dicts
     """
-    return dict(zip(list(x.keys())+list(y.keys()), list(x.values())+list(y.values()))) #  i wrote this with a migraine
+    return dict(
+        zip(list(x.keys()) + list(y.keys()), list(x.values()) + list(y.values())))  # i wrote this with a migraine
 
 
 def get_params(rawtext):
     """
     Returns a dict_keys object containing  parameter names as strings
     """
-    loc = {"x":1,"y":1,"t":0,"dx":None,"dy":None}
+    loc = {"x": 1, "y": 1, "t": 0, "dx": None, "dy": None}
     glo = {}
     exec("from math import*", glo, loc)
     params = {}
 
-    for line in filter(lambda x:x!="", rawtext.split("\n")):
+    for line in filter(lambda x: x != "", rawtext.split("\n")):
         def process_line(loc, params):
-            x=dict_join(params, loc)
+            x = dict_join(params, loc)
             try:
                 exec(line, glo, x)
             except NameError as e:
@@ -41,6 +57,7 @@ def get_params(rawtext):
             except Exception as e:
                 logging.error(f"Internal Error - {e}")
             return x, params
+
         loc, params = process_line(loc, params)
     return params.keys()
 
@@ -52,11 +69,11 @@ def initialise_logger(debug: bool):
     initialisation_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 
     logdir = f"{getcwd()}/core/logs"
-    logs = map(lambda x:x.replace(".log", ""), os.listdir(logdir))
+    logs = map(lambda x: x.replace(".log", ""), os.listdir(logdir))
 
-    debug_logs = filter(lambda x:x[0:9]=="DEBUG_LOG", logs)
-    logs = filter(lambda x:x[0:3]=="LOG", logs)
-    debug_logs = list(map(lambda x:x.replace("DEBUG_LOG-",""), debug_logs))
+    debug_logs = filter(lambda x: x[0:9] == "DEBUG_LOG", logs)
+    logs = filter(lambda x: x[0:3] == "LOG", logs)
+    debug_logs = list(map(lambda x: x.replace("DEBUG_LOG-", ""), debug_logs))
     logs = list(map(lambda x: x.replace("LOG-", ""), logs))
 
     debug_logs.sort(key=lambda date: datetime.strptime(date, "%m-%d-%Y_%H-%M-%S"))
@@ -71,7 +88,7 @@ def initialise_logger(debug: bool):
         debug_logs.pop(0)
 
     if debug:
-        logging.basicConfig(filename = f"{logdir}/DEBUG_LOG-{initialisation_time}.log", level=logging.DEBUG)
+        logging.basicConfig(filename=f"{logdir}/DEBUG_LOG-{initialisation_time}.log", level=logging.DEBUG)
     else:
         logging.basicConfig(filename=f"{logdir}/LOG-{initialisation_time}.log", level=logging.WARNING)
 
@@ -92,7 +109,7 @@ def structure_check(dir: str):
         logging.warning("No cache directory found, possibly deleted by user. Regenerating...")
         try:
             makedirs(dir + "/cache")
-            file = open(dir + "/cache/.gitignore","w+", encoding="utf-8")
+            file = open(dir + "/cache/.gitignore", "w+", encoding="utf-8")
             file.write("""*\n!.gitignore""")
             file.close()
             logging.info("Regeneration of cache files successful.")
@@ -109,7 +126,7 @@ def structure_check(dir: str):
         logging.warning("No user_files directory found, possibly deleted by user. Regenerating...")
         try:
             makedirs(dir + "/cache")
-            f = open(dir + "/cache/.gitignore","w+",encoding="utf-8")
+            f = open(dir + "/cache/.gitignore", "w+", encoding="utf-8")
             f.write("""*\n!.gitignore""")
             f.close()
             logging.info("Regeneration of user_files successful.")
@@ -124,9 +141,10 @@ def structure_check(dir: str):
         try:
             makedirs(dir + "/defaults")
             logging.info("Regeneration of directory successful.")
-            logging.critical("Default files are missing - directory was regenerated but no way to curl the files has been implemented.")  # todo: defaults regenerated
+            logging.critical(
+                "Default files are missing - directory was regenerated but no way to curl the files has been implemented.")  # todo: defaults regenerated
 
-            remove(dir+"/defaults")
+            remove(dir + "/defaults")
             logging.info("Defaults directory removed to avoid confusion. Exiting...")
             exit(126)
 
@@ -135,7 +153,6 @@ def structure_check(dir: str):
             logging.error(f"Internal error - {e}")
 
     if not exists(dir + "/samples"):
-
         # No point regenerating this as it'd have to be cloned from the repo and that requires git to be installed.
         # Could do a check for git on PATH then use a dialogue box?
         # Kinda pointless though, samples are bundled into the repository anyway so the user has either deleted them
@@ -159,34 +176,29 @@ def parse_eq(rawtext):
         f.write("    " + each + "\n")
     f.write("    return dx,dy")
     f.close()
-    try:
-        import sys
-        sys.path.append(os.path.normpath(os.getcwd() + os.sep + os.pardir) + "/src/cache/")
-        import user_func
+    f = load_user_func()
 
-    except Exception as e:
-        logging.critical(e)
-        exit()
-
-    return params, user_func.user_defined_func
+    return params, f
 
 
 def _edit(inner: Callable) -> Callable:
     """
     Decorator for Point that manages the amount of times it has been edited
     """
+
     def outer(*args) -> Callable:
-        args[0]._edits+=1
+        args[0]._edits += 1
         return inner(*args)
+
     return outer
 
 
-def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float: # unused?
+def chebyshev_dist(vec1: list[float, float], vec2: list[float, float]) -> float:  # unused?
     """
     Finds the chebyshev distance between two points.
     """
     (x_1, y_1), (x_2, y_2) = vec1, vec2
-    return max(abs(x_1-x_2), abs(y_1-y_2))
+    return max(abs(x_1 - x_2), abs(y_1 - y_2))
 
 
 class WorkerThread(threading.Thread):
@@ -207,6 +219,7 @@ class WorkerThread(threading.Thread):
 
 class RangeError(ValueError):
     """ Honestly not sure why this is required. """
+
     def __init__(self):
         logging.critical("Internal Error - RangeError")
 
@@ -215,14 +228,17 @@ class Color:
     """
     Class that manages RGBA values, and blending of colors
     """
+
     def __init__(self, red: int, green: int, blue: int, alpha: int):
         self.alpha, self.red, self.blue, self.green = alpha, red, blue, green
 
     def __add__(self, other):
-        new_alpha = self.alpha/255 + other.alpha/255*(1-self.alpha/255)
-        result = Color(min(floor((self.red/255   * self.alpha/255 + other.red/255   * other.alpha/255) * 255), 255),
-                       min(floor((self.green/255 * self.alpha/255 + other.green/255 * other.alpha/255) * 255), 255),
-                       min(floor((self.blue/255  * self.alpha/255 + other.blue/255  * other.alpha/255) * 255), 255),
+        new_alpha = self.alpha / 255 + other.alpha / 255 * (1 - self.alpha / 255)
+        result = Color(min(floor((self.red / 255 * self.alpha / 255 + other.red / 255 * other.alpha / 255) * 255), 255),
+                       min(floor((self.green / 255 * self.alpha / 255 + other.green / 255 * other.alpha / 255) * 255),
+                           255),
+                       min(floor((self.blue / 255 * self.alpha / 255 + other.blue / 255 * other.alpha / 255) * 255),
+                           255),
                        floor(new_alpha * 255))
         return result
 
@@ -239,9 +255,10 @@ class Gradient:
     """
     Class that manages color gradients.
     """
+
     def __init__(self, gradient: list[list[Color, int]]):
         self._color_peaks = sorted(gradient, key=lambda x: x[1])
-        if len(gradient) <= 1: # 1 or 0
+        if len(gradient) <= 1:  # 1 or 0
             self._range = len(gradient)
         else:
             self._range = abs(self._color_peaks[0][1] - self._color_peaks[-1][1])
@@ -251,22 +268,22 @@ class Gradient:
 
     def __getitem__(self, val: int):
         rel_pos = None
-        val = val - val//len(self)
+        val = val - val // len(self)
         for index, (color, position) in enumerate(self._color_peaks):
             if position == val:
                 return color
             if position > val:
-                next_color,prev_color = color,self._color_peaks[index-1][0]
-                rel_pos = val-self._color_peaks[index-1][1]
-                range_between = position - self._color_peaks[index-1][1]
+                next_color, prev_color = color, self._color_peaks[index - 1][0]
+                rel_pos = val - self._color_peaks[index - 1][1]
+                range_between = position - self._color_peaks[index - 1][1]
                 break
         if rel_pos is None:
             logging.error("Gradient object received invalid index.")
             raise RangeError
-        red   = floor(prev_color.red   +(next_color.red   - prev_color.red)   * (rel_pos/range_between))
-        green = floor(prev_color.green +(next_color.green - prev_color.green) * (rel_pos/range_between))
-        blue  = floor(prev_color.blue  +(next_color.blue  - prev_color.blue)  * (rel_pos/range_between))
-        alpha = floor(prev_color.alpha +(next_color.alpha - prev_color.alpha) * (rel_pos/range_between))
+        red = floor(prev_color.red + (next_color.red - prev_color.red) * (rel_pos / range_between))
+        green = floor(prev_color.green + (next_color.green - prev_color.green) * (rel_pos / range_between))
+        blue = floor(prev_color.blue + (next_color.blue - prev_color.blue) * (rel_pos / range_between))
+        alpha = floor(prev_color.alpha + (next_color.alpha - prev_color.alpha) * (rel_pos / range_between))
 
         return Color(red, green, blue, alpha)
 
@@ -274,21 +291,21 @@ class Gradient:
         if not isinstance(other, Gradient):
             raise TypeError
 
-        right_color_peaks = [[x[0], x[1]+len(self)] for v, x in enumerate(other._color_peaks)]
-        right_color_peaks[0][1]+=1
+        right_color_peaks = [[x[0], x[1] + len(self)] for v, x in enumerate(other._color_peaks)]
+        right_color_peaks[0][1] += 1
         return Gradient(self._color_peaks + right_color_peaks)
 
     def __mul__(self, scalar: Union[float, int]):
-        return Gradient(list(map(lambda x: [x[0], ceil(x[1]*scalar)], self._color_peaks[:])))
+        return Gradient(list(map(lambda x: [x[0], ceil(x[1] * scalar)], self._color_peaks[:])))
 
     def __rmul__(self, scalar: Union[float, int]):
-        return self*scalar
+        return self * scalar
 
     def left_padd(self, padding: int):
         """
         Shifts a gradient wholly left by in timespace an integer
         """
-        return Gradient(list(map(lambda x: [x[0], x[1]+padding], self._color_peaks[:])))
+        return Gradient(list(map(lambda x: [x[0], x[1] + padding], self._color_peaks[:])))
 
     def invert(self) -> None:
         """
@@ -302,6 +319,7 @@ class Colormap:
     """
     Encapsulates gradient, and saves and loads
     """
+
     def __init__(self, gradient: Gradient):
         self._gradient = gradient
 
@@ -337,7 +355,7 @@ class Colormap:
 
     def __reversed__(self):
         x = self.get_gradient().__getattribute__("_color_peaks")
-        cols = list(map(lambda a:a[0], x))
+        cols = list(map(lambda a: a[0], x))
         positions = list(map(lambda a: a[1], x))
         new = list(zip(cols[::-1], positions))
         self.get_gradient().__setattr__("_color_peaks", new)
@@ -355,7 +373,7 @@ class Colormap:
         """
         self.set_gradient(self.get_gradient().left_padd(amount))
 
-    def insert_value(self, color: Color, time: int) -> None: #todo: move this to the Gradient class and encapsulate
+    def insert_value(self, color: Color, time: int) -> None:  # todo: move this to the Gradient class and encapsulate
         """
         Inserts a new color into the color peaks.
         """
@@ -367,7 +385,7 @@ class Colormap:
                 x[index] = to_insert
                 self._gradient.__setattr__("_color_peaks", x)
                 return
-        for index, (color, value) in enumerate(x): # talk about the bs where this would try and insert 100, 0, 100
+        for index, (color, value) in enumerate(x):  # talk about the bs where this would try and insert 100, 0, 100
             if time < value:
                 x.insert(index, to_insert)
                 self._gradient.__setattr__("_color_peaks", x)
@@ -381,10 +399,10 @@ class Colormap:
         Saves the colormap object into path.colormap
         """
         logging.debug(f"Saving colormap to {path}.colormap")
-        data = self._gradient._color_peaks[:] #protected access is fine as it is a copy
+        data = self._gradient._color_peaks[:]  # protected access is fine as it is a copy
         if path[-1] != "/":
             try:
-                file = open(path+".colormap", "w+", encoding="utf-8")
+                file = open(path + ".colormap", "w+", encoding="utf-8")
                 logging.debug(f"Successfully opened {path}.colormap")
             except Exception as e:
                 logging.error("Saving colormap failed")
@@ -392,9 +410,11 @@ class Colormap:
         else:
             logging.info("Filename was not specified, only directory. Creating a new unnamed colormap file...")
             try:
-                files_in_dir = [file for file in listdir(path) if isfile(join(path, file))]                   #list files in dir
-                filtered_files = list(filter(lambda x:"unnamed_colormap" in x, files_in_dir))                 #filter unnamed_colormap-like files
-                file = open(path+f'/unnamed_colormap_{len(filtered_files)}.colormap',"w+",encoding="utf-8")       #create a new colormap without overwriting existing ones (hopefully)
+                files_in_dir = [file for file in listdir(path) if isfile(join(path, file))]  # list files in dir
+                filtered_files = list(
+                    filter(lambda x: "unnamed_colormap" in x, files_in_dir))  # filter unnamed_colormap-like files
+                file = open(path + f'/unnamed_colormap_{len(filtered_files)}.colormap', "w+",
+                            encoding="utf-8")  # create a new colormap without overwriting existing ones (hopefully)
                 logging.debug(f"Successfully opened {path}/unnamed_colormap_{len(filtered_files)}.colormap")
             except Exception as e:
                 logging.error("Saving colormap failed")
@@ -426,7 +446,8 @@ class Colormap:
             self.set_gradient(Gradient(new_gradient))
             file.close()
             logging.debug("Loading success.")
-            logging.debug(f"Loaded new Gradient object at {hex(id(self.get_gradient()))} with parent at {hex(id(self))}")
+            logging.debug(
+                f"Loaded new Gradient object at {hex(id(self.get_gradient()))} with parent at {hex(id(self))}")
             return True
         except Exception as e:
             logging.error("Loading failed.")
@@ -439,6 +460,7 @@ class Point:
     """
     Class manages a point position and color.
     """
+
     def __init__(self, color: Color, pos: list):
         self._color = color
         self._pos = pos
@@ -478,29 +500,30 @@ class Point:
         ox, oy = origin
         sinA = sin(angle)
         cosA = cos(angle)
-        nx = ox + cosA*(px-ox)-sinA*(py-oy)
-        ny = oy + sinA*(px-ox)-cosA*(py-oy)
-        self._pos = [nx,ny]
+        nx = ox + cosA * (px - ox) - sinA * (py - oy)
+        ny = oy + sinA * (px - ox) - cosA * (py - oy)
+        self._pos = [nx, ny]
 
     def translate(self, vector: list[float]):
         """
         Translates a point by a vector
         """
-        vx,vy = vector
-        px,py = self._pos
-        self._pos = [px+vx, py+vy]
+        vx, vy = vector
+        px, py = self._pos
+        self._pos = [px + vx, py + vy]
 
     def scale_by_dims(self, scalars: list[float]):
-        self._pos = [[x*y for x, y in zip(self.get_pos(), scalars)]]
+        self._pos = [x * y for x, y in zip(self.get_pos(), scalars)]
 
 
 class Camera:
     """
     Class that manages camera transforms
     """
+
     def __init__(self, top_left: list[float, float], bottom_right: list[float, float], rotation: float):
         self._plane = [top_left, bottom_right]
-        self._center = [(top_left[0] + bottom_right[0])/ 2, (top_left[1] + bottom_right[1])/ 2]
+        self._center = [(top_left[0] + bottom_right[0]) / 2, (top_left[1] + bottom_right[1]) / 2]
         self._rotation = rotation
 
         logging.debug(f"New Camera object instantiated at {hex(id(self))}")
@@ -509,17 +532,17 @@ class Camera:
         """
         Returns the perspective plane of the camera on a spcae
         """
-        (min_x, max_y),(max_x, min_y) = self._plane
+        (min_x, max_y), (max_x, min_y) = self._plane
         plane = []
         for point in space:
-            x,y = point.get_pos()
+            x, y = point.get_pos()
             if min_x <= x <= max_x and min_y <= y <= max_x:
                 if self._rotation != 0.0:
                     point.rotate(-self._rotation, self._center)
                 plane.append(point)
         return plane
 
-    def scale_to_resolution(self, plane: list[Point], res: list[int]):
+    def scale_to_resolution(self, plane: list[Point], res: list[int]): # error here
         """
         Scales the perspective plane to span a resolution
         """
@@ -527,7 +550,7 @@ class Camera:
         translate = [-min_x, -min_y]  # translates the top left point in the plane to the 0,0 pixel position
         # lc's are faster :)
         [x.translate(translate) for x in plane]
-        [x.scale_by_dims([res[0]/(max_x-min_y), res[1]/(max_y-min_y)]) for x in plane]  # scales it to the resolution
+        [x.scale_by_dims([res[0] / abs(max_x - min_y), res[1] / abs(max_y - min_y)]) for x in plane]  # scales it to the resolution
 
         return plane
 
@@ -536,7 +559,9 @@ class Emitter:
     """
     Where the magic happens
     """
-    def __init__(self, func: Callable, params: dict, pos: list[int, int], tail_end: int = 1000, time_offset: int=0) -> None:
+
+    def __init__(self, func: Callable, params: dict, pos: list[int, int], tail_end: int = 1000,
+                 time_offset: int = 0) -> None:
         self._func, self._pos, self._tail_end = func, pos, tail_end
         self._params = params
         self._time = time_offset
@@ -558,14 +583,16 @@ class Settings:
     """
     Will hold preferences. Just a datastruct.
     """
-    def __init__(self, colormap, colormap_scale_factor = 100):
+
+    def __init__(self, colormap, colormap_scale_factor=100):
         self.colormap = colormap
         self.colormap_scale_factor = colormap_scale_factor
         self.resolution = [4096, 4096]  # hardcoded defaults
-        self.extension = "PNG"
+        self.extension = "png"
         self.save_directory = getcwd() + "/user_files/"
         self.iters = 1_000_000
         self.blend_mode = "add"
+        self.bg_color = Color(0,0,0,255)
 
 
 from tkinter import Canvas, END
@@ -577,14 +604,16 @@ class Attractor:
     """
     Class that defines an attractor and therefore the output image
     """
-    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, supersampled=False, supersampling_factor=None) -> None:
+
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, supersampled=False,
+                 supersampling_factor=None) -> None:
         self.supersampled = supersampled
         self.supersampling_factor = supersampling_factor
         self._emitters = emitters
-        self._points   = points
+        self._points = points
         self._settings = settings
-        self._size     = len(self._points)
-        self._camera   = camera
+        self._size = len(self._points)
+        self._camera = camera
         self.colormap = self._settings.colormap * self._settings.colormap_scale_factor
         self.colormap_len = len(self.colormap)
 
@@ -601,7 +630,7 @@ class Attractor:
                 newpoints.append(Point(self.colormap.get_value(time % self.colormap_len), pos))
         self._points += newpoints
 
-        return self._camera.get_plane(newpoints)
+        return newpoints
 
     def async_render(self, resolution: list[int], canvas: Canvas):
         canvas.delete("all")
@@ -632,23 +661,28 @@ class Attractor:
         renderer = Renderer(resolution, self.timestep, None, self.colormap, self._camera)
         points = []
         x = self._settings.iters
-        for i in range(x-1):
+        for i in range(x - 1):
             if i % 100 == 0:
                 progress_bar.step(100)
             points.append(next(renderer))
 
-        img = Image.new('RGBA', (resolution[0], resolution[1]), color=(0,0,0,255))
+        color = (self._settings.bg_color.red, self._settings.bg_color.green, self._settings.bg_color.blue, self._settings.bg_color.alpha)
+        img = Image.new('RGBA', (resolution[0], resolution[1]), color=color)
         points = list(filter(lambda x: x is not None, points))
         if self._settings.blend_mode == "add":
             newpoints = []
-            for coord, colors in groupby(points, lambda x: [x[0],x[1]]):
+            for coord, colors in groupby(points, lambda x: [x[0], x[1]]):
                 colors = [x[2] for x in list(colors)]
-                newpoints.append([coord[0], coord[1], sum(colors[1:], start=colors[0])])  # NOTE: sum(B) is actually 0+B[0]+B[1] ... B[len(B)]. That's so stupid. - Ace
+                newpoints.append([coord[0], coord[1], sum(colors[1:], start=colors[
+                    0])])  # NOTE: sum(B) is actually 0+B[0]+B[1] ... B[len(B)]. That's so stupid. - Ace
             points = newpoints
         for point in points:
             x, y, c = point
-            img.putpixel((x, y), (c.red, c.green, c.blue, c.alpha))
-        img.save(self._settings.save_directory+"image_test."+self._settings.extension.lower())
+            try:
+                img.putpixel((x, y), (c.red, c.green, c.blue, c.alpha))
+            except IndexError:
+                pass
+        img.save(self._settings.save_directory + "image_test." + self._settings.extension.lower())
 
         destroy()
         return img
@@ -685,12 +719,13 @@ class Renderer:
             hex_color = point.get_color().hex()
             self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
 
+
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:
     colormap_len = len(colormap)
 
-    stretch_factor = height/colormap_len  # generally should be > 1 and integer but could cause issues
-    for i in range(colormap_len+1):
-        canvas.create_rectangle(0, i*stretch_factor, width, height, fill=colormap.get_value(i).hex(), outline="")
+    stretch_factor = height / colormap_len  # generally should be > 1 and integer but could cause issues
+    for i in range(colormap_len + 1):
+        canvas.create_rectangle(0, i * stretch_factor, width, height, fill=colormap.get_value(i).hex(), outline="")
 
 
 class TextChangeListener(WorkerThread):

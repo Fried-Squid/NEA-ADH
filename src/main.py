@@ -5,6 +5,7 @@ from tkinter import filedialog as fd
 from tkinter.scrolledtext import ScrolledText
 from core.common import *
 
+
 def updates_settings_frame(f):
     def wrapper(*args): #talk about writing this algorithm as a wrapper
         logging.debug("Update needed for a settings frame...")
@@ -15,7 +16,7 @@ def updates_settings_frame(f):
             widget.destroy()
 
         logging.debug("Instantiating new settings class into the actual settings frame")
-        self.frame_content(self.actual_settings_frame)
+        self.frame_content(self.actual_settings_frame, self.settings)
         return x
     return wrapper # talk about the None error you had from returning this
 
@@ -119,7 +120,7 @@ class MainPage(tk.Frame):
         self.equation_box.insert(tk.END, default_text)
         self.update_colormap()
 
-        self.start_pos = [0.1, 0.1]
+        self.start_pos = [0, 0]
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)
@@ -135,9 +136,9 @@ class MainPage(tk.Frame):
         self.params = None
         self.params_dict = None
 
-        self.camera = Camera([-2, 2], [2, -2], self.cam_rotation)
+        self.camera = Camera([-0.5, 1], [0.5, -1], self.cam_rotation) # xe ys
         self.parse_eqs()
-        self.vwin_save_callback(-2, -2, 2, 2)
+        self.vwin_save_callback(-0.5, -1, 0.5, 1)
 
         self.equation_box_change_listener()
 
@@ -239,7 +240,13 @@ class MainPage(tk.Frame):
         logging.debug("User pressed button - 'Settings'")
         logging.debug("Trying to open new window...")
         settings_window = tk.Toplevel(self.parent)
-        settings_app = SettingsWindow(settings_window)
+        settings_app = SettingsWindow(settings_window, self.settings, self.settings_save_callback)
+
+    @updates_preview
+    def settings_save_callback(self, settings: Settings):
+        self.settings = settings
+        del self.attractor
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
@@ -422,11 +429,11 @@ class VWinConfigWindow(PopupWindow):
         self.x_val_label     = tk.Label(self.parent, text="X: 0")
         self.y_val_label     = tk.Label(self.parent, text="Y: 0")
 
-        self.x_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.y_start_slider = tk.Scale(self.parent, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.x_end_slider   = tk.Scale(self.parent,   from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.y_end_slider   = tk.Scale(self.parent,   from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.scale_slider   = tk.Scale(self.parent,   from_=1,   to=100, orient=tk.VERTICAL,   command=self.scale_changed)
+        self.x_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.y_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.x_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.y_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
+        self.scale_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=1,   to=100, orient=tk.VERTICAL,   command=self.scale_changed)
 
         self.axis_options = ["x", "y", "p1", "p2"]
 
@@ -540,20 +547,26 @@ class VWinConfigWindow(PopupWindow):
 
 
 class SettingsWindow(PopupWindow):
-    def __init__(self, parent):
+    def __init__(self, parent, settings, settings_callback):
         super().__init__(parent)
         self.parent.geometry('750x450')
 
+        self.settings_callback = settings_callback
+        self.settings = settings
+        self.on_close = self.save
         self.bar_callbacks = [self.general, self.rendering, self.files, self.color, self.ui, self.maths, self.update_method] #talk about the callbacks in development
         self.settings_bar = SettingsBar(parent, self.bar_callbacks)
         self.exit_button.place(x=25, y=395, width=700, height=45)
 
-        self.actual_settings_frame = tk.Frame(self.parent)
+        self.actual_settings_frame = tk.Frame(self.parent, bg="grey")
         self.actual_settings_frame.place(x=122, y=12, width=616, height=370)
 
         logging.debug("Trying to render default (general) settings frame...") #talk about these algos in design
         self.frame_content = GeneralSettings
-        self.frame_content(self.actual_settings_frame)
+        self.frame_content(self.actual_settings_frame, self.settings)
+
+    def save(self):
+        self.settings_callback(self.settings)
 
     @updates_settings_frame
     def general(self):
@@ -590,44 +603,80 @@ class SettingsWindow(PopupWindow):
         logging.debug("User opened update tab of settings")
         logging.error("Not Implemented")
 
+    def save_callback(self, settings):
+        self.settings_callback(settings)
+
 
 class GeneralSettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
-        self.test_label = tk.Label(self.parent, text="GENERAL")
-        self.test_label.place(x=0, y=10, width=100, height=10)
+        self.iters_label = tk.Label(self.parent, text="Iterations")
+        self.iters_label.place(x=10, y=10, width=100, height=25)
+        self.iters_slider = tk.Scale(self.parent, from_=100_000, to=100_000_000, orient=tk.HORIZONTAL,command=self.update)
+        self.iters_slider.set(self.settings.iters)
+        self.iters_slider.place(x=120, y= 10, width = 400, height = 25)
 
+    def update(self,*args,**kwargs):
+        self.settings.iters = self.iters_slider.get()
 
 class RenderingSettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
         self.test_label = tk.Label(self.parent, text="RENDER")
         self.test_label.place(x=0, y=10, width=100, height=10)
 
 
 class FilesSettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
-        self.test_label = tk.Label(self.parent, text="FILES")
-        self.test_label.place(x=0, y=10, width=100, height=10)
+        self.ext_label = tk.Label(self.parent, text="File Extension")
+        self.ext_label.place(x=10, y=10, width=100, height=25)
+        exts = ["png","jpg","bmp"]
+        self.ext = tk.StringVar()
+        self.ext.set(self.settings.extension)
+        self.ext_optionmenu = tk.OptionMenu(self.parent, self.ext, *exts, command=self.update)
+        self.ext_optionmenu.place(x=120, y=0, width=400, height=25)
+
+    def update(self, *args, **kwargs):
+        self.settings.extension = self.ext.get()
 
 
 class ColorSettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
-        self.test_label = tk.Label(self.parent, text="COLOR")
-        self.test_label.place(x=0, y=10, width=100, height=10)
+        self.colormap_scale_label = tk.Label(self.parent, text="Colormap Scaling")
+        self.colormap_scale_label.place(x=10, y=10, width=100, height=25)
+        self.colormap_scale_slider = tk.Scale(self.parent, from_=1, to=1000, orient=tk.HORIZONTAL,command=self.update)
+        self.colormap_scale_slider.set(self.settings.colormap_scale_factor)
+        self.colormap_scale_slider.place(x=120, y=10, width =400, height=25)
 
+        self.bg_col_label = tk.Label(self.parent, text="Background Color:")
+        self.bg_col_label.place(x=10, y=10+35, width=100, height=25)
+        self.bg_col_button = tk.Button(self.parent, command=self.askcol, bg=self.settings.bg_color.hex())
+        self.bg_col_button.place(x=120, y=10+35, width=400, height=25)
+    def askcol(self, *args, **kwargs):
+        output = cc.askcolor()[0]
+        color = Color(*output, 255)
+        self.settings.bg_color = color
+        self.bg_col_button.configure(bg=self.settings.bg_color.hex())
+    def update(self,*args,**kwargs):
+        self.settings.colormap_scale_factor = self.colormap_scale_slider.get()
 
 class UISettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
         self.test_label = tk.Label(self.parent, text="UI")
         self.test_label.place(x=0, y=10, width=100, height=10)
 
 
 class MathsSettings:
-    def __init__(self, parent):
+    def __init__(self, parent, settings):
+        self.settings = settings
         self.parent = parent
         self.test_label = tk.Label(self.parent, text="MATHS")
         self.test_label.place(x=0, y=10, width=100, height=10)
