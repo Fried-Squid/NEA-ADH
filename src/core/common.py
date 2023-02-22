@@ -149,18 +149,26 @@ def structure_check(dir: str):
 def parse_eq(rawtext):
     params = get_params(rawtext)
 
-    def gen_params(**kwargs):
-        return dict(kwargs)
+    os.remove(os.path.normpath(os.getcwd() + os.sep + os.pardir) + "/src/cache/user_func.py")
+    f = open(os.path.normpath(os.getcwd() + os.sep + os.pardir) + "/src/cache/user_func.py", "w+")
+    f.write("from math import*\n")
+    kwargs = ",".join([x + "=0" for x in list(params)])
+    f.write(f"def user_defined_func(x,y,t{',' + kwargs if len(kwargs) > 0 else ''}):\n")
+    indent = rawtext.split("\n")
+    for each in indent:
+        f.write("    " + each + "\n")
+    f.write("    return dx,dy")
+    f.close()
+    try:
+        import sys
+        sys.path.append(os.path.normpath(os.getcwd() + os.sep + os.pardir) + "/src/cache/")
+        import user_func
 
-    def func(**kwargs):
-        glo = {}
-        loc = gen_params(**kwargs)
-        exec("from math import*", glo, loc)
-        exec(rawtext, glo, loc)
+    except Exception as e:
+        logging.critical(e)
+        exit()
 
-        return loc["dx"], loc["dy"]
-
-    return params, func
+    return params, user_func.user_defined_func
 
 
 def _edit(inner: Callable) -> Callable:
@@ -426,7 +434,7 @@ class Colormap:
             file.close()
             return False
 
-        
+
 class Point:
     """
     Class manages a point position and color.
@@ -483,7 +491,7 @@ class Point:
         self._pos = [px+vx, py+vy]
 
     def scale_by_dims(self, scalars: list[float]):
-        self._pos = [x*y for x, y in zip(self.get_pos(), scalars)]
+        self._pos = [[x*y for x, y in zip(self.get_pos(), scalars)]]
 
 
 class Camera:
@@ -521,7 +529,6 @@ class Camera:
         [x.translate(translate) for x in plane]
         [x.scale_by_dims([res[0]/(max_x-min_y), res[1]/(max_y-min_y)]) for x in plane]  # scales it to the resolution
 
-
         return plane
 
 
@@ -542,7 +549,7 @@ class Emitter:
         """
         x, y = list(self._pos)
         t = self._time
-        self._pos = self._func(x=x, y=y, t=t, **self._params)
+        self._pos = self._func(x, y, t, **self._params)
         self._time += 1
         return self._pos[:], self._time, (self._time >= self._tail_end)
 

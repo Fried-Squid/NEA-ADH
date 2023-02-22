@@ -166,6 +166,7 @@ class MainPage(tk.Frame):
     @updates_preview
     def parse_eqs(self):
         rawtext = self.equation_box.get("1.0", tk.END)
+        del self.func
         self.params, self.func = parse_eq(rawtext)
         self.params_dict = self.process_new_params()
         del self.attractor
