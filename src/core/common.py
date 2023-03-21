@@ -587,12 +587,14 @@ class Settings:
     def __init__(self, colormap, colormap_scale_factor=100):
         self.colormap = colormap
         self.colormap_scale_factor = colormap_scale_factor
-        self.resolution = [4096, 4096]  # hardcoded defaults
+        self.resolution = [4096, 4096]  # hardcoded defaults, change via supersampling settings
         self.extension = "png"
         self.save_directory = getcwd() + "/user_files/"
         self.iters = 1_000_000
         self.blend_mode = "add"
         self.bg_color = Color(0,0,0,255)
+        self.filename = "image_test"
+        self.start_pos = [-0.72, -0.64]
 
 
 from tkinter import Canvas, END
@@ -605,17 +607,18 @@ class Attractor:
     Class that defines an attractor and therefore the output image
     """
 
-    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings, supersampled=False,
-                 supersampling_factor=None) -> None:
-        self.supersampled = supersampled
-        self.supersampling_factor = supersampling_factor
-        self._emitters = emitters
-        self._points = points
-        self._settings = settings
-        self._size = len(self._points)
-        self._camera = camera
-        self.colormap = self._settings.colormap * self._settings.colormap_scale_factor
-        self.colormap_len = len(self.colormap)
+    def __init__(self, emitters: list[Emitter], points: list, camera: Camera, settings: Settings,
+                 supersampled=False, supersampling_factor=None) -> None:
+
+        self.supersampled:          bool            = supersampled
+        self.supersampling_factor:  float           = supersampling_factor
+        self._emitters:             list[Emitter]   = emitters
+        self._points:               list[Point]     = points
+        self._settings:             Settings        = settings
+        self._size:                 int             = len(self._points)
+        self._camera:               Camera          = camera
+        self.colormap:              Colormap        = self._settings.colormap * self._settings.colormap_scale_factor
+        self.colormap_len:          int             = len(self.colormap)
 
         logging.debug(f"New Attractor object instantiated at {hex(id(self))}")
 
@@ -635,7 +638,7 @@ class Attractor:
     def async_render(self, resolution: list[int], canvas: Canvas):
         canvas.delete("all")
 
-        class RenderThread(WorkerThread):  # This is so weird
+        class RenderThread(WorkerThread):  # Local class inside attractor class, self is RenderThread instance
             def __init__(self, timestep, colormap, camera, canvas_inner, resolution_inner):
                 super().__init__()
                 self.timestep = timestep
@@ -647,7 +650,7 @@ class Attractor:
 
             def run(self) -> None:
                 renderer = Renderer(self.resolution, self.timestep, self.canvas, self.colormap, self.camera)
-                while not self.is_stopped() and self.iters < 25000:
+                while not self.is_stopped() and self.iters < 250000:
                     next(renderer)
                     self.iters += 1
 
@@ -666,23 +669,24 @@ class Attractor:
                 progress_bar.step(100)
             points.append(next(renderer))
 
-        color = (self._settings.bg_color.red, self._settings.bg_color.green, self._settings.bg_color.blue, self._settings.bg_color.alpha)
+        color = (self._settings.bg_color.red, self._settings.bg_color.green, self._settings.bg_color.blue,
+                 self._settings.bg_color.alpha)
         img = Image.new('RGBA', (resolution[0], resolution[1]), color=color)
         points = list(filter(lambda x: x is not None, points))
         if self._settings.blend_mode == "add":
-            newpoints = []
+            new_points: list[list] = []
             for coord, colors in groupby(points, lambda x: [x[0], x[1]]):
                 colors = [x[2] for x in list(colors)]
-                newpoints.append([coord[0], coord[1], sum(colors[1:], start=colors[
-                    0])])  # NOTE: sum(B) is actually 0+B[0]+B[1] ... B[len(B)]. That's so stupid. - Ace
-            points = newpoints
+                new_points.append([coord[0], coord[1], sum(colors[1:], start=colors[
+                    0])])  # NOTE: sum(B) is actually def sum(B, start=0): return start+B[0]+B[1] ... B[len(B)].
+            points = new_points
         for point in points:
             x, y, c = point
             try:
                 img.putpixel((x, y), (c.red, c.green, c.blue, c.alpha))
             except IndexError:
                 pass
-        img.save(self._settings.save_directory + "image_test." + self._settings.extension.lower())
+        img.save(self._settings.save_directory + self._settings.filename + "." + self._settings.extension.lower())
 
         destroy()
         return img
@@ -712,12 +716,10 @@ class Renderer:
 
     def next_inner_canvas(self):
         self.time += 1
-        if self.time > len(self.colormap):
-            self.time = 0
         for point in self.camera.scale_to_resolution(self.timestep(), self.resolution):
             x, y = point.get_pos()
             hex_color = point.get_color().hex()
-            self.canvas.create_line(x, y, x + 1, y, fill=hex_color)
+            self.canvas.create_line(x, y, x + 0.1, y+0.1, fill=hex_color)
 
 
 def display_colormap_on_canvas(canvas: Canvas, colormap: Colormap, width, height) -> None:

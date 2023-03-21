@@ -7,7 +7,7 @@ from core.common import *
 
 
 def updates_settings_frame(f):
-    def wrapper(*args): #talk about writing this algorithm as a wrapper
+    def wrapper(*args):
         logging.debug("Update needed for a settings frame...")
         x= f(*args)
         self = args[0]
@@ -18,7 +18,7 @@ def updates_settings_frame(f):
         logging.debug("Instantiating new settings class into the actual settings frame")
         self.frame_content(self.actual_settings_frame, self.settings)
         return x
-    return wrapper # talk about the None error you had from returning this
+    return wrapper
 
 
 # talk about window design change while coding because it felt off during testing
@@ -120,7 +120,6 @@ class MainPage(tk.Frame):
         self.equation_box.insert(tk.END, default_text)
         self.update_colormap()
 
-        self.start_pos = [0, 0]
         self.tail_end = 1
 
         self.settings = Settings(self.colormap)
@@ -136,9 +135,9 @@ class MainPage(tk.Frame):
         self.params = None
         self.params_dict = None
 
-        self.camera = Camera([-0.5, 1], [0.5, -1], self.cam_rotation) # xe ys
+        self.camera = Camera([-2, 2], [2, -2], self.cam_rotation) # xe ys
         self.parse_eqs()
-        self.vwin_save_callback(-0.5, -1, 0.5, 1)
+        self.vwin_save_callback(-2, -2, 2, 2)
 
         self.equation_box_change_listener()
 
@@ -171,7 +170,7 @@ class MainPage(tk.Frame):
         self.params, self.func = parse_eq(rawtext)
         self.params_dict = self.process_new_params()
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.settings.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def save_colormap(self):
         logging.debug("User pressed button - 'Save Colormap'")
@@ -208,7 +207,7 @@ class MainPage(tk.Frame):
         self.vwin_params = xs, ys, xe, ye
         self.camera = Camera([xs, ye], [xe, ys], self.cam_rotation)
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.settings.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def edit_vwin(self):
         logging.debug("User pressed button - 'Edit Vwin'")
@@ -246,7 +245,7 @@ class MainPage(tk.Frame):
     def settings_save_callback(self, settings: Settings):
         self.settings = settings
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.settings.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     def parameters(self):
         logging.debug("User pressed button - 'Parameters'")
@@ -258,7 +257,7 @@ class MainPage(tk.Frame):
     def params_save_callback(self, params_dict: dict):
         self.params_dict = params_dict
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.settings.start_pos, self.tail_end)], [], self.camera, self.settings)
 
     @updates_preview
     def process_new_params(self):
@@ -295,7 +294,7 @@ class MainPage(tk.Frame):
         self.colormap = colormap
         self.settings.colormap = colormap
         del self.attractor
-        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.start_pos, self.tail_end)], [], self.camera, self.settings)
+        self.attractor = Attractor([Emitter(self.func, self.params_dict, self.settings.start_pos, self.tail_end)], [], self.camera, self.settings)
 
 
 # talk about using this parent class in design
@@ -429,11 +428,16 @@ class VWinConfigWindow(PopupWindow):
         self.x_val_label     = tk.Label(self.parent, text="X: 0")
         self.y_val_label     = tk.Label(self.parent, text="Y: 0")
 
-        self.x_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.y_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.x_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.y_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,  orient=tk.VERTICAL,   command=self.sliders_updated)
-        self.scale_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=1,   to=100, orient=tk.VERTICAL,   command=self.scale_changed)
+        self.x_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,
+                                       orient=tk.VERTICAL, command=self.sliders_updated)
+        self.y_start_slider = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,
+                                       orient=tk.VERTICAL, command=self.sliders_updated)
+        self.x_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,
+                                       orient=tk.VERTICAL, command=self.sliders_updated)
+        self.y_end_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=-10, to=10,
+                                       orient=tk.VERTICAL, command=self.sliders_updated)
+        self.scale_slider   = tk.Scale(self.parent, showvalue=0, resolution=0.1, from_=1,   to=100,
+                                       orient=tk.VERTICAL, command=self.scale_changed)
 
         self.axis_options = ["x", "y", "p1", "p2"]
 
@@ -472,12 +476,11 @@ class VWinConfigWindow(PopupWindow):
         self.x_axis_dropdown.place(x=65, y=224, width=214, height=25)
         self.y_axis_dropdown.place(x=65, y=265, width=214, height=25)
 
-        self.scale_entry  .place(x=369-30, y=299, width=40, height=45)     # weird x values
-        self.x_start_entry.place(x=417-25, y=299, width=40, height=45)     # weird x values
-        self.y_start_entry.place(x=459-20, y=299, width=40, height=45)     # weird x values
-        self.x_end_entry  .place(x=501-15, y=299, width=40, height=45)     # weird x values
-        self.y_end_entry  .place(x=543-10, y=299, width=40, height=45)     # weird x values
-
+        self.scale_entry  .place(x=369-30, y=299, width=40, height=45)
+        self.x_start_entry.place(x=417-25, y=299, width=40, height=45)
+        self.y_start_entry.place(x=459-20, y=299, width=40, height=45)
+        self.x_end_entry  .place(x=501-15, y=299, width=40, height=45)
+        self.y_end_entry  .place(x=543-10, y=299, width=40, height=45)
         self.reset_button        .place(x=580, y=299, width=140, height=45)
         self.save_button         .place(x=580, y=15,  width=140, height=45)
         self.load_button         .place(x=580, y=75,  width=140, height=45)
@@ -486,9 +489,7 @@ class VWinConfigWindow(PopupWindow):
         self.exit_button         .place(x=9,   y=299, width=320, height=45)
 
         logging.debug("VWin Settings window initialised.")
-
         logging.warning("Need to load values here not just call sliders_updated()")
-
         logging.debug("Updating entries")
         self.sliders_updated()
 
@@ -515,7 +516,7 @@ class VWinConfigWindow(PopupWindow):
     def swap_axis(self):
         x = self.x_axis.get()
         y = self.y_axis.get()
-      
+
         self.x_axis.set(y)
         self.y_axis.set(x)
 
@@ -529,7 +530,7 @@ class VWinConfigWindow(PopupWindow):
         self.y_start_slider.set(xs)
         self.x_end_slider  .set(ye)
         self.y_end_slider  .set(xe)
-    
+
     def save(self):
         # Needs to pass out all of this
         xs = float(self.x_start_entry.get())
@@ -561,7 +562,7 @@ class SettingsWindow(PopupWindow):
         self.actual_settings_frame = tk.Frame(self.parent, bg="grey")
         self.actual_settings_frame.place(x=122, y=12, width=616, height=370)
 
-        logging.debug("Trying to render default (general) settings frame...") #talk about these algos in design
+        logging.debug("Trying to render default (general) settings frame...")
         self.frame_content = GeneralSettings
         self.frame_content(self.actual_settings_frame, self.settings)
 
@@ -603,9 +604,6 @@ class SettingsWindow(PopupWindow):
         logging.debug("User opened update tab of settings")
         logging.error("Not Implemented")
 
-    def save_callback(self, settings):
-        self.settings_callback(settings)
-
 
 class GeneralSettings:
     def __init__(self, parent, settings):
@@ -619,6 +617,7 @@ class GeneralSettings:
 
     def update(self,*args,**kwargs):
         self.settings.iters = self.iters_slider.get()
+
 
 class RenderingSettings:
     def __init__(self, parent, settings):
@@ -658,13 +657,16 @@ class ColorSettings:
         self.bg_col_label.place(x=10, y=10+35, width=100, height=25)
         self.bg_col_button = tk.Button(self.parent, command=self.askcol, bg=self.settings.bg_color.hex())
         self.bg_col_button.place(x=120, y=10+35, width=400, height=25)
+
     def askcol(self, *args, **kwargs):
         output = cc.askcolor()[0]
         color = Color(*output, 255)
         self.settings.bg_color = color
         self.bg_col_button.configure(bg=self.settings.bg_color.hex())
+
     def update(self,*args,**kwargs):
         self.settings.colormap_scale_factor = self.colormap_scale_slider.get()
+
 
 class UISettings:
     def __init__(self, parent, settings):
@@ -893,7 +895,8 @@ class SupersamplingWindow(PopupWindow):
         self.enabled = (1, 0)[self.enabled]
 
     def reset(self):
-        pass # todo: default settings load here
+        pass
+
 def main():
     initialise_logger(True)  # change to false during prod
     structure_check(getcwd())
